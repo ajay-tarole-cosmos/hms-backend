@@ -16,7 +16,7 @@ const {
   Package,
 } = require("../models")
 const moment = require("moment")
-const { generateInvoiceNumber, generateFolioNumber } = require("../utils/NumberGenerators")
+const { generateInvoiceNumber, generateFolioNumber } = require("../utils/numberGenerators")
 
 // GST Configuration
 const GST_RATES = {
