@@ -1,0 +1,291 @@
+# components:
+#   schemas:
+#     Room:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#           description: Unique ID of the room
+#         room_name:
+#           type: string
+#           description: Name/title of the room
+#         room_number:
+#           type: string
+#           description: Room number (e.g., "101", "202A")
+#         room_type:
+#           type: string
+#           description: Type of the room (e.g., "Deluxe", "Standard")
+#         room_status:
+#           type: string
+#           description: Status of the room (e.g., "Available", "Occupied")
+#         floor:
+#           type: integer
+#           description: Floor number where the room is located
+#         price:
+#           type: number
+#           format: float
+#           description: Room price per night
+#         description:
+#           type: string
+#           description: Description of the room
+#         amenities:
+#           type: array
+#           items:
+#             type: string
+#           description: List of amenity IDs or names
+#         facilities:
+#           type: array
+#           items:
+#             type: string
+#           description: List of facility IDs or names
+#         is_available:
+#           type: boolean
+#           description: Whether the room is currently available
+#         capacity:
+#           type: integer
+#           description: Maximum capacity of guests
+#         bed_count:
+#           type: integer
+#           description: Number of beds in the room
+#         bed_type:
+#           type: string
+#           description: Type of beds (e.g., "King", "Queen", "Twin")
+#         hotel_id:
+#           type: string
+#           format: uuid
+#           description: ID of the hotel this room belongs to
+#         tax:
+#           type: number
+#           format: float
+#           description: Tax applicable to the room
+#         badge:
+#           type: string
+#           description: Optional badge label (e.g., "Best Seller", "New")
+#         image_url:
+#           type: string
+#           format: uri
+#           description: URL of the room image
+#         created_at:
+#           type: string
+#           format: date-time
+#           description: Timestamp of room creation
+#         updated_at:
+#           type: string
+#           format: date-time
+#           description: Timestamp of last update
+#       required:
+#         - room_number
+#         - room_type
+#         - room_status
+#         - floor
+#         - price
+#     OfferInput:
+#       type: object
+#       required:
+#         - offer_name
+#         - room_type_id
+#         - offer_type
+#         - valid_date_from
+#         - valid_date_to
+#         - discount_type
+#         - discount_value
+#       properties:
+#         offer_name:
+#           type: string
+#           example: "Summer Special"
+#         room_type_id:
+#           type: string
+#           example: "Deluxe"
+#         offer_type:
+#           type: string
+#           example: "Seasonal"
+#         valid_date_from:
+#           type: string
+#           format: date
+#           example: "2025-06-01"
+#         valid_date_to:
+#           type: string
+#           format: date
+#           example: "2025-06-30"
+#         discount_type:
+#           type: string
+#           enum: [percentage, flat]
+#           example: "percentage"
+#         discount_value:
+#           type: number
+#           example: 15
+#
+#     OfferResponse:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#           example: 1
+#         offer_name:
+#           type: string
+#         room_type_id:
+#           type: string
+#         offer_type:
+#           type: string
+#         valid_date_from:
+#           type: string
+#           format: date
+#         valid_date_to:
+#           type: string
+#           format: date
+#         discount_type:
+#           type: string
+#         discount_value:
+#           type: number
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#
+components:
+  schemas:
+    OfferInput:
+      type: object
+      required:
+        - offer_name
+        - room_type_id
+        - offer_type
+        - valid_date_from
+        - valid_date_to
+        - discount_type
+        - discount_value
+      properties:
+        offer_name:
+          type: string
+          example: "Summer Special"
+        room_type_id:
+          type: string
+          example: "Deluxe"
+        offer_type:
+          type: string
+          enum: [seasonal, weekend]
+          example: "seasonal"
+        valid_date_from:
+          type: string
+          format: date
+          example: "2025-06-01"
+        valid_date_to:
+          type: string
+          format: date
+          example: "2025-06-30"
+        discount_type:
+          type: string
+          enum: [percentage, flat]
+          example: "percentage"
+        discount_value:
+          type: number
+          example: 15
+
+    OfferResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        offer_name:
+          type: string
+        room_type:
+          type: string
+        offer_type:
+          type: string
+        valid_date_from:
+          type: string
+          format: date
+        valid_date_to:
+          type: string
+          format: date
+        discount_type:
+          type: string
+        discount_value:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PackageInput:
+      type: object
+      required:
+        - room_ids
+        - package_name
+        - package_description
+        - package_price
+      properties:
+        room_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          example: ["e4d909c2-2b2f-4f64-bf12-9e437c1d59a2"]
+        package_name:
+          type: string
+          example: "Family Getaway Package"
+        package_description:
+          type: string
+          example: "Includes 2 deluxe rooms, breakfast, and free spa vouchers"
+        package_price:
+          type: number
+          format: float
+          example: 299.99
+
+    PackageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          
+        Service:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            description:
+              type: string
+            price:
+              type: number
+            is_active:
+              type: boolean
+            room_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+   

@@ -1,0 +1,10 @@
+module.exports.GuestService = require('./user.service')
+module.exports.roomService = require('./room.service')
+module.exports.billingService=require('./billing.service');
+module.exports.roomReservation= require('./roomReservation.service')
+module.exports.hotelService=require('./hotel.service')
+module.exports.serviceService = require('./service.service')
+module.exports.pdfService= require('./pdf.service');
+module.exports.emailService= require('./email.service');
+module.exports.restaurantTableService= require('./restaurantTable.service')
+module.exports.TableBookingService= require('./tableBooking.service');

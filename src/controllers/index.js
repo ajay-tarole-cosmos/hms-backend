@@ -1,0 +1,10 @@
+module.exports.guestController = require('./user.controller');
+module.exports.roomReservationController= require('./roomReservation.controller')
+module.exports.hotelController= require('./hotel.controller');
+module.exports.roomController= require('./room.controllers')
+module.exports.serviceController= require('./service.controller');
+module.exports.billingController= require('./billing.controller');
+module.exports.categoryController= require('./category.controller');
+module.exports.subcategoryController= require('./subcategory.controller');
+module.exports.variantController= require('./variant.controller');
+module.exports.tableController= require('./restaurant_table.controller');
