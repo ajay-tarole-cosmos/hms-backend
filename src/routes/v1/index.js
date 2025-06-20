@@ -14,10 +14,12 @@ const restaurantTableRoutes = require('./restaurant_table.routes');
 const tableBookingRoutes = require('./tableBooking.routes');
 const restaurantOrderRoutes = require('./restaurant_order.routes');
 const authRoute = require('./auth.route');
-
+const report = require('./report.route');
 const departmentRoutes = require('./department.routes');
 const departmentCategoryRoutes = require('./deparment_category.routes');
 const inventoryItemRoutes = require('./inventoryItem.routes');
+const procurementItemRoutes = require('./procurement.routes');
+const inventoryRoutes = require('./inventory.routes');
 const router = express.Router();
 
 const defaultRoutes = [
@@ -73,6 +75,14 @@ const defaultRoutes = [
     path:"/department-inventories",
     route:inventoryItemRoutes
   },
+  {
+    path:"/report",
+    route:report
+  },
+  {
+    path:"/",
+    route:procurementItemRoutes
+  }
 ];
 
 const devRoutes = [

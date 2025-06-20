@@ -8,3 +8,6 @@ module.exports.categoryController= require('./category.controller');
 module.exports.subcategoryController= require('./subcategory.controller');
 module.exports.variantController= require('./variant.controller');
 module.exports.tableController= require('./restaurant_table.controller');
+module.exports.reportController = require('./report.controller');
+module.exports.deparmentCateegoryController = require('./department_category.controller')
+module.exports.deparmentController = require('./department.controller')

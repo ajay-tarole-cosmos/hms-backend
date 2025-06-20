@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { SuperAdmin } = require('../models');
 const ApiError = require('../utils/ApiError');

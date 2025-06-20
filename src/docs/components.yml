@@ -288,4 +288,38 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  RestaurantInvoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_number:
+          type: string
+        folio_id:
+          type: string
+          format: uuid
+        total_amount:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
+  RestaurantPayment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_id:
+          type: string
+          format: uuid
+        method:
+          type: string
+        amount:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
    

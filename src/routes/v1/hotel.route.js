@@ -1,14 +1,45 @@
 const express = require("express");
 const { hotelController } = require("../../controllers");
+const { authenticateUser } = require("../../middlewares/authMiddleware");
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
 
 const router = express.Router();
 
-router.post('/create', hotelController.createHotel);
-router.post('/all', hotelController.getHotels);
-router.post('/:id', hotelController.getHotelById);
-router.put('/:id', hotelController.updateHotel);
-router.delete('/:id', hotelController.deleteHotel);
-
+  router.post(
+    '/create',
+    // authenticateUser,
+    // checkStaffPermission('hotels', 'add'),
+    hotelController.createHotel
+  );
+  
+  router.post(
+    '/all',
+    // authenticateUser,
+    // checkStaffPermission('hotels', 'view'),
+    hotelController.getHotels
+  );
+  
+  router.post(
+    '/:id',
+    // authenticateUser,
+    // checkStaffPermission('hotels', 'view'),
+    hotelController.getHotelById
+  );
+  
+  router.put(
+    '/:id',
+    // authenticateUser,
+    // checkStaffPermission('hotels', 'update'),
+    hotelController.updateHotel
+  );
+  
+  router.delete(
+    '/:id',
+    // authenticateUser,
+    // checkStaffPermission('hotels', 'delete'),
+    hotelController.deleteHotel
+  );
+  
 
 router.post('/facility/all', hotelController.getFacilities);
 router.post('/facility/:id', hotelController.getFacilityById);
@@ -18,10 +49,10 @@ router.delete('/facility/:id', hotelController.deleteFacility);
 
 // Amenity Routes
 router.post('/amenity/all', hotelController.getAmenities);
+router.post('/amenity/create', hotelController.createAmenity);
 router.post('/amenity/:id', hotelController.getAmenityById);
-router.post('/amenity', hotelController.createAmenity);
-router.put('/amenity/:id', hotelController.updateAmenity);
-router.delete('/amenity/:id', hotelController.deleteAmenity);
+router.put('/amenityupdate/:id', hotelController.updateAmenity);
+router.delete('/amenitydelete/:id', hotelController.deleteAmenity);
 
 module.exports = router
 

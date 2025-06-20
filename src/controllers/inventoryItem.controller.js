@@ -14,36 +14,67 @@ exports.getAll = catchAsync(async (req, res) => {
   sendResponse(res, { statusCode: 200, message: 'Success', data, pagination });
 });
 
-exports.getInventoryByCategoryId=catchAsync(async (req, res) => {
+exports.getInventoryByCategoryId = catchAsync(async (req, res) => {
   const categories = await service.findByCategoryId(req);
 
   if (!categories || categories.length === 0) {
     return sendResponse(res, {
-      statusCode: httpStatus.NOT_FOUND,
-      success: false,
-      message: 'No categories found for the given department ID',
+      statusCode: 404,
+      message: 'No inventory items found for this category',
     });
   }
 
   return sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Categories fetched successfully',
+    statusCode: 200,
+    message: 'Success',
     data: categories,
   });
 });
 
 exports.getOne = catchAsync(async (req, res) => {
   const data = await service.findById(req.params.id);
+  if (!data) {
+    return sendResponse(res, {
+      statusCode: 404,
+      message: 'Inventory item not found',
+    });
+  }
   sendResponse(res, { statusCode: 200, message: 'Success', data });
 });
 
 exports.update = catchAsync(async (req, res) => {
-  const data = await service.update(req.params.id, req.body);
+  // Extract source information from request
+  const sourceInfo = {
+    sourceType: 'manual',
+    notes: req.body.notes,
+    user: { id: req.user?.id },
+    metadata: {
+      updatedVia: 'web',
+      updatedAt: new Date().toISOString(),
+      previousQuantity: req.body.previousQuantity,
+      reason: req.body.reason || 'Manual update'
+    }
+  };
+
+  console.log('Updating inventory with source info:', sourceInfo);
+
+  const data = await service.update(req.params.id, req.body, sourceInfo);
   sendResponse(res, { statusCode: 200, message: 'Item updated', data });
 });
 
-exports.remove = catchAsync(async (req, res) => {
+exports.delete = catchAsync(async (req, res) => {
   await service.delete(req.params.id);
-  sendResponse(res, { statusCode: 204, message: 'Item deleted' });
+  sendResponse(res, { statusCode: 200, message: 'Item deleted' });
+});
+
+exports.recordConsumption = catchAsync(async (req, res) => {
+  const { quantity, notes } = req.body;
+  const userId = req.user?.id;
+
+  const data = await service.recordConsumption(req.params.id, quantity, userId, notes);
+  sendResponse(res, { 
+    statusCode: 200, 
+    message: 'Consumption recorded successfully', 
+    data 
+  });
 });

@@ -1,13 +1,69 @@
+const express = require("express");
+const router = express.Router();
+const subcategoryController = require('../../controllers/subcategory.controller');
+const upload = require("../../middlewares/upload");
+const { authenticateUser } = require("../../middlewares/authMiddleware");
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
+
+// Create menu category (subcategory)
+router.post(
+  '/create',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'add'),
+  upload.single("image"),
+  subcategoryController.createSubcategory
+);
+
+// View all menu categories
+router.post(
+  '/all',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  subcategoryController.getAllSubcategories
+);
+
+// View by main category
+router.post(
+  '/by-category/:category_id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  subcategoryController.getSubcategoriesByCategoryId
+);
+
+// View one subcategory
+router.post(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  subcategoryController.getSubcategoryById
+);
+
+// Update menu subcategory
+router.put(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'update'),
+  upload.single("image"),
+  subcategoryController.updateSubcategory
+);
+
+// Delete subcategory
+router.delete(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'delete'),
+  subcategoryController.deleteSubcategory
+);
+
+module.exports = router;
+
+
 /**
  * @swagger
  * tags:
  *   name: Subcategories
  *   description: Manage food and beverage subcategories
  */
-
-const express = require("express");
-const router = express.Router();
-const subcategoryController = require('../../controllers/subcategory.controller');
 
 /**
  * @swagger
@@ -38,7 +94,6 @@ const subcategoryController = require('../../controllers/subcategory.controller'
  *       400:
  *         description: Invalid input
  */
-router.post('/create', subcategoryController.createSubcategory);
 
 /**
  * @swagger
@@ -50,7 +105,6 @@ router.post('/create', subcategoryController.createSubcategory);
  *       200:
  *         description: A list of subcategories
  */
-router.post('/all', subcategoryController.getAllSubcategories);
 
 /**
  * @swagger
@@ -70,7 +124,6 @@ router.post('/all', subcategoryController.getAllSubcategories);
  *       200:
  *         description: A list of subcategories
  */
-router.post('/by-category/:category_id', subcategoryController.getSubcategoriesByCategoryId);
 
 /**
  * @swagger
@@ -92,7 +145,6 @@ router.post('/by-category/:category_id', subcategoryController.getSubcategoriesB
  *       404:
  *         description: Subcategory not found
  */
-router.post('/:id', subcategoryController.getSubcategoryById);
 
 /**
  * @swagger
@@ -129,7 +181,6 @@ router.post('/:id', subcategoryController.getSubcategoryById);
  *       404:
  *         description: Subcategory not found
  */
-router.put('/:id', subcategoryController.updateSubcategory);
 
 /**
  * @swagger
@@ -151,6 +202,3 @@ router.put('/:id', subcategoryController.updateSubcategory);
  *       404:
  *         description: Subcategory not found
  */
-router.delete('/:id', subcategoryController.deleteSubcategory);
-
-module.exports = router;

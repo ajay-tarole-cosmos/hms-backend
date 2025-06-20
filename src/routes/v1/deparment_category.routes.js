@@ -1,8 +1,52 @@
-// routes/category.routes.js
-
 const router = require('express').Router();
-const ctrl = require('../../controllers/department_category.controller');
+const { deparmentCateegoryController } = require('../../controllers');
+const { authenticateUser } = require('../../middlewares/authMiddleware');
+const checkStaffPermission = require('../../middlewares/checkResourcePermission');
 
+router.post(
+    '/create',
+    authenticateUser,
+    checkStaffPermission('departments', 'add'),
+    deparmentCateegoryController.create
+  );
+  
+  router.post(
+    '/all',
+    authenticateUser,
+    checkStaffPermission('departments', 'view'),
+    deparmentCateegoryController.getAll
+  );
+  
+  router.post(
+    '/by-department/:department_id',
+    authenticateUser,
+    checkStaffPermission('departments', 'view'),
+    deparmentCateegoryController.getCategoryByDepartmentId
+  );
+  
+  router.post(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'view'),
+    deparmentCateegoryController.getOne
+  );
+  
+  router.put(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'update'),
+    deparmentCateegoryController.update
+  );
+  
+  router.delete(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'delete'),
+    deparmentCateegoryController.remove
+  );
+  
+
+module.exports = router;
 /**
  * @swagger
  * tags:
@@ -39,7 +83,6 @@ const ctrl = require('../../controllers/department_category.controller');
  *       400:
  *         description: Bad request
  */
-router.post('/create', ctrl.create);
 
 /**
  * @swagger
@@ -51,7 +94,6 @@ router.post('/create', ctrl.create);
  *       200:
  *         description: List of all department department-categories
  */
-router.post('/all', ctrl.getAll);
 
 /**
  * @swagger
@@ -71,7 +113,6 @@ router.post('/all', ctrl.getAll);
  *       200:
  *         description: A list of subcategories
  */
-router.post('/by-department/:department_id', ctrl.getCategoryByDepartmentId);
 
 /**
  * @swagger
@@ -93,7 +134,6 @@ router.post('/by-department/:department_id', ctrl.getCategoryByDepartmentId);
  *       404:
  *         description: Category not found
  */
-router.post('/:id', ctrl.getOne);
 
 /**
  * @swagger
@@ -126,7 +166,6 @@ router.post('/:id', ctrl.getOne);
  *       404:
  *         description: Category not found
  */
-router.put('/:id', ctrl.update);
 
 /**
  * @swagger
@@ -148,6 +187,4 @@ router.put('/:id', ctrl.update);
  *       404:
  *         description: Category not found
  */
-router.delete('/:id', ctrl.remove);
 
-module.exports = router;

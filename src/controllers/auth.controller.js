@@ -1,24 +1,68 @@
 const httpStatus = require('http-status');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { Staff } = require('../models');
+const bcrypt = require('bcrypt');
+const { Staff, sequelize } = require('../models');
 const { generateAuthTokens } = require('../services/token.service');
-const { sendResetPasswordEmail, sendOtpEmail } = require('../services/email.service');
+const { sendOtpEmail } = require('../services/email.service');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
-const config = require('../config/config');
-const { v4: uuidv4 } = require('uuid');
-const { authenticateUser, authorizeRoles } = require('../middlewares/authMiddleware');
+const { setPermissions } = require('../middlewares/permissionManager');
+const defaultPermissions = require('../utils/defaultPermissions');
+const sendResponse = require('../utils/sendResponse');
+
 
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
-  const user = await Staff.findOne({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+  const staff = await Staff.findOne({ where: { email } });
+  if (!staff || staff.status !== 'active') {
+    return res.status(401).json({ message: 'Invalid credentials' });
   }
-  const tokens = await generateAuthTokens(user);
-  res.status(httpStatus.OK).json({ user: { id: user.id, name: user.first_name + ' ' + user.last_name, email: user.email, role: user.role }, tokens });
+
+  const isMatch = await bcrypt.compare(password, staff.password);
+  if (!isMatch) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  const tokens = await generateAuthTokens({
+    id: staff.id,
+    email: staff.email,
+    role: staff.role,
+    department_id: staff.department_id,
+    has_global_access: staff.has_global_access
+  });
+
+  staff.access_token = tokens.access.token;
+  staff.refresh_token = tokens.refresh.token;
+  await staff.save();
+
+  return res.json({
+    access_token: tokens.access.token,
+    refresh_token: tokens.refresh.token,
+    staff: {
+      id: staff.id,
+      first_name: staff.first_name,
+      last_name: staff.last_name,
+      email: staff.email,
+      role: staff.role,
+      hotel_id: staff.hotel_id,
+    },
+  });
 });
+
+const logout = catchAsync(async (req, res) => {
+  const user = req.user;
+
+  const staff = await Staff.findByPk(user.id);
+  if (!staff) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  staff.access_token = null;
+  staff.refresh_token = null;
+  await staff.save();
+
+  res.status(200).json({ message: 'Logged out successfully' });
+});
+
 
 const forgotPassword = catchAsync(async (req, res) => {
   const { email } = req.body;
@@ -60,38 +104,179 @@ const resetPassword = catchAsync(async (req, res) => {
   if (user.otp !== otp || new Date() > user.otp_expiry) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
   }
+
+  if (!user.otp_verified) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'OTP not verified');
+  }
+
   user.password = await bcrypt.hash(password, 8);
   user.otp = null;
   user.otp_expiry = null;
   user.otp_verified = false;
   await user.save();
+
   res.status(httpStatus.OK).json({ message: 'Password reset successful' });
 });
 
-const createUserBySuperAdmin = [
-  authenticateUser,
-  authorizeRoles('super_admin'),
-  catchAsync(async (req, res) => {
-    const { first_name, last_name, email, phone, password, role } = req.body;
-    if (!email || !password || !role) {
-      return res.status(httpStatus.BAD_REQUEST).json({ message: 'Email, password, and role are required' });
-    }
-    const exist = await Staff.findOne({ where: { email } });
-    if (exist) {
-      return res.status(httpStatus.BAD_REQUEST).json({ message: 'User already exists with this email' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 8);
-    const staff = await Staff.create({
-      first_name,
-      last_name,
-      email,
-      phone,
-      password: hashedPassword,
-      role,
-      status: 'active',
-    });
-    res.status(httpStatus.OK).json({ message: 'User created successfully', staff });
-  })
-];
+const createUser = (catchAsync(async (req, res) => {
+  const creator = req.user;
+  const { first_name, last_name, email, phone, password, role, hotel_id, global_access, department_id, permissions } = req.body;
+  if (!email || !password || !role) {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: 'Email, password, and role are required' });
+  }
+  console.log("req.body", req.body)
+  const exist = await Staff.findOne({ where: { email } });
+  if (exist) {
+    return res.status(httpStatus.BAD_REQUEST).json({ message: 'User already exists with this email' });
+  }
 
-module.exports = { login, forgotPassword, verifyOtp, resetPassword, createUserBySuperAdmin };
+  // Validate role assignment
+  const allowedRolesForAdmin = ['front_desk', 'housekeeping', 'restaurant_manager', 'waiter', 'inventory_manager', 'finance', 'auditor',"manager"];
+  if (
+    creator.role === 'admin' &&
+    !allowedRolesForAdmin.includes(role)
+  ) {
+    return res.status(httpStatus.FORBIDDEN).json({
+      message: `Admin can only assign roles: ${allowedRolesForAdmin.join(', ')}`,
+    });
+  }
+  if (!Array.isArray(permissions) || permissions.length === 0) {
+    return res.status(httpStatus.BAD_REQUEST).json({
+      message: 'Permissions are required and must be a non-empty array',
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const staff = await Staff.create({
+    first_name,
+    last_name,
+    email,
+    phone,
+    password: hashedPassword,
+    role,
+    status: 'active',
+    hotel_id: creator.hotel_id || hotel_id,
+    has_global_access:global_access,
+    department_id
+  });
+
+
+  await setPermissions(staff.id, permissions);
+
+  res.status(httpStatus.OK).json({
+    message: 'Staff user created successfully',
+    staff,
+  });
+}))
+
+const assignPermissions = async (req, res) => {
+  const staffId = req.query.staffId;
+  const { permissions } = req.body;
+  console.log("staffId", staffId)
+  /*
+    permissions = [
+      {
+        resource: 'reservations',
+        can_view: true,
+        can_add: true,
+        can_update: false,
+        can_delete: false
+      },
+      {
+        resource: 'rooms',
+        can_view: true,
+        can_add: false,
+        ...
+      }
+    ]
+  */
+
+  await setPermissions(staffId, permissions);
+  res.status(200).json({ success: true, message: 'Permissions assigned successfully' });
+};
+
+const getStaffPermissions = catchAsync(async (req, res) => {
+  const { staffId } = req.params;
+  console.log("staff id", staffId)
+  const staff = await Staff.findByPk(staffId);
+
+  const [results] = await sequelize.query(`
+    SELECT
+      r.resource,
+      COALESCE(p.can_view, false) AS can_view,
+      COALESCE(p.can_add, false) AS can_add,
+      COALESCE(p.can_update, false) AS can_update,
+      COALESCE(p.can_delete, false) AS can_delete
+    FROM (
+      SELECT DISTINCT resource FROM staff_permissions
+    ) r
+    LEFT JOIN staff_permissions p
+    ON p.resource = r.resource AND p.staff_id = :staffId
+  `, {
+    replacements: { staffId },
+  });
+
+  return sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Permissions fetched successfully',
+    data: {
+      staffId: staffId,
+      department_id: staff.department_id,
+      global_access: staff.has_global_access,
+      permissions: results
+    },
+  });
+});
+
+const getStaff = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const staff = await Staff.findAndCountAll({
+    limit,
+    offset,
+    attributes: {
+      exclude: [
+        'password',
+        'otp',
+        'otp_expiry',
+        'otp_verified',
+        'access_token',
+        'refresh_token',
+        'created_at',
+        'updated_at'
+      ]
+    }
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: staff.rows,
+    pagination: {
+      page,
+      limit,
+      totalPages: Math.ceil(staff.count / limit),
+      totalResults: staff.count
+    }
+  });
+};
+
+const getDefaultPermissions = (req, res) => {
+  const role = req.params.role?.toLowerCase();
+  console.log("role", role);
+  if (!role) {
+    return res.status(400).json({ success: false, message: 'Role is required' });
+  }
+
+  const permissions = defaultPermissions[role];
+
+  if (!permissions) {
+    return res.status(404).json({ success: false, message: 'Role not found' });
+  }
+
+  return res.status(200).json({ success: true, role, permissions });
+};
+
+module.exports = { login, logout, forgotPassword, verifyOtp, resetPassword, assignPermissions, createUser, getStaffPermissions, getStaff, getDefaultPermissions };

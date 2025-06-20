@@ -1,7 +1,45 @@
-// routes/department.routes.js
-
 const router = require('express').Router();
-const ctrl = require('../../controllers/department.controller');
+const { deparmentController } = require('../../controllers');
+const { authenticateUser } = require('../../middlewares/authMiddleware');
+const checkStaffPermission = require('../../middlewares/checkResourcePermission');
+
+router.post(
+    '/create',
+    authenticateUser,
+    checkStaffPermission('departments', 'add'),
+    deparmentController.create
+  );
+  
+  router.post(
+    '/all',
+    authenticateUser,
+    checkStaffPermission('departments', 'view'),
+    deparmentController.getAll
+  );
+  
+  router.post(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'view'),
+    deparmentController.getOne
+  );
+  
+  router.put(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'update'),
+    deparmentController.update
+  );
+  
+  router.delete(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('departments', 'delete'),
+    deparmentController.remove
+  );
+  
+
+module.exports = router;
 
 /**
  * @swagger
@@ -35,7 +73,6 @@ const ctrl = require('../../controllers/department.controller');
  *       400:
  *         description: Bad request
  */
-router.post('/create', ctrl.create);
 
 /**
  * @swagger
@@ -47,7 +84,6 @@ router.post('/create', ctrl.create);
  *       200:
  *         description: List of all departments
  */
-router.post('/all', ctrl.getAll);
 
 /**
  * @swagger
@@ -69,7 +105,6 @@ router.post('/all', ctrl.getAll);
  *       404:
  *         description: Department not found
  */
-router.post('/:id', ctrl.getOne);
 
 /**
  * @swagger
@@ -102,7 +137,6 @@ router.post('/:id', ctrl.getOne);
  *       404:
  *         description: Department not found
  */
-router.put('/:id', ctrl.update);
 
 /**
  * @swagger
@@ -124,6 +158,4 @@ router.put('/:id', ctrl.update);
  *       404:
  *         description: Department not found
  */
-router.delete('/:id', ctrl.remove);
 
-module.exports = router;

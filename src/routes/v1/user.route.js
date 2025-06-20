@@ -1,43 +1,83 @@
 const express = require("express");
+const router = express.Router();
 const validate = require("../../middlewares/validate");
 const { guestController, roomReservationController } = require("../../controllers");
 const { GuestValidation } = require("../../validations");
 const upload = require("../../middlewares/upload");
 const { createStaffUser } = require('../../controllers/user.controller');
+const { authenticateUser } = require("../../middlewares/authMiddleware");
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
 
-const router = express.Router();
-
+// Create guest
 router.post(
-    "/create",
-    upload.fields([{ name: "document", maxCount: 1 }]),
-    validate(GuestValidation.CreateGuest),
-    guestController.createGuestUser
+  "/create",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'add'),
+  upload.fields([{ name: "document", maxCount: 1 }]),
+  validate(GuestValidation.CreateGuest),
+  guestController.createGuestUser
 );
 
+// Update guest
 router.put(
-    "/update/:id",
-    upload.fields([{ name: "document", maxCount: 1 }]),
-    validate(GuestValidation.UpdateGuest),
-    guestController.updateGuestUser
+  "/update/:id",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'update'),
+  upload.fields([{ name: "document", maxCount: 1 }]),
+  validate(GuestValidation.UpdateGuest),
+  guestController.updateGuestUser
 );
-router.post("/today-guest", guestController.getTodayGuestUser)
 
-router.delete("/delete-guest/:id", guestController.deleteGuestDetails)
-router.post("/all-guest", guestController.getGuestUser)
-router.post("/:guestId", guestController.getGuestById)
-router.post("/guest-history/:id",roomReservationController.getGuestReservation)
-router.post('/create-staff', createStaffUser);
+// Get today's guests
+router.post(
+  "/today-guest",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'view'),
+  guestController.getTodayGuestUser
+);
 
+// Delete guest
+router.delete(
+  "/delete-guest/:id",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'delete'),
+  guestController.deleteGuestDetails
+);
 
-// router.post(
-//     "/upload-docs/:id", upload.fields([
-//       { name: "profileImage", maxCount: 1 },
-//     //   { name: "cover_profile", maxCount: 1 },
-//     ]),
-//     uploadDocsRoute.uploadDocsById
-//   );
+// Get all guests
+router.post(
+  "/all-guest",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'view'),
+  guestController.getGuestUser
+);
+
+// Get guest by ID
+router.post(
+  "/:guestId",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'view'),
+  guestController.getGuestById
+);
+
+// Get guest reservation history
+router.post(
+  "/guest-history/:id",
+  authenticateUser,
+  checkStaffPermission('front_desk', 'view'),
+  roomReservationController.getGuestReservation
+);
+
+// Create staff account (optional: can protect as 'staff' resource if needed)
+router.post(
+  '/create-staff',
+  authenticateUser,
+  checkStaffPermission('setting', 'add'),
+  createStaffUser
+);
 
 module.exports = router;
+
 
 /**
  * @swagger

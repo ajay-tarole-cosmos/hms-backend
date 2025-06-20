@@ -21,6 +21,16 @@ const Subcategory = sequelize.define('Subcategory', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  image: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'URL to image (e.g. Cloudinary)',
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    comment: 'Base price for this subcategory, optional',
+  }
 }, {
   sequelize,
   modelName: 'Subcategory',
@@ -29,6 +39,7 @@ const Subcategory = sequelize.define('Subcategory', {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 });
+module.exports = Subcategory;
 
 Subcategory.associate = function (models) {
   Subcategory.belongsTo(models.Category, {

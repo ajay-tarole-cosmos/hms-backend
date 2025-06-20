@@ -1,7 +1,7 @@
 const httpStatus = require("http-status");
 const ApiError = require("../utils/ApiError");
 const { Op } = require("sequelize");
-const { Guests, RoomNumber, Reservation, Room, GuestDetail, BookingLog, Staff, sequelize, Payments, Folio } = require("../models");
+const { Guests, RoomNumber, Reservation, Room, GuestDetail, BookingLog, Staff, sequelize, Payments, Folio, FolioCharge, Invoice } = require("../models");
 const { generateUniqueBookingId } = require("../utils/UniqueBookingId");
 const paginate = require("../models/plugins/paginate.plugin");
 const { RoomStatus, RoomBookingStatus } = require("../utils/RoomStatus");
@@ -9,7 +9,7 @@ const { createGuest } = require("./user.service");
 const moment = require('moment');
 const papa = require('papaparse');
 const ExcelJS = require('exceljs');
-const { safelyAddChargeToFolio, safelyGenerateRoomCharges, safelyCreateFolio, generateInvoiceFromFolio, processPayment, } = require("./billing.service");
+const { safelyAddChargeToFolio, safelyGenerateRoomCharges, safelyCreateFolio, generateInvoiceFromFolio, processPayment, updateFolioTotals, createFolio, } = require("./billing.service");
 const { GuestService } = require(".");
 const { sendReservationConfirmationEmail } = require("./email.service");
 const RoomPricing = require("../models/roomPricing.model");
@@ -158,6 +158,7 @@ const checkingRoomAvailabilty = async (roomId, checkIn, checkOut, excludeReserva
     throw new ApiError(httpStatus.NOT_FOUND, "Room not found")
   }
 
+  console.log("room",room)
   const unavailableStatuses = [RoomStatus.MAINTENANCE, RoomStatus.OUT_OF_ORDER, RoomStatus.BLOCKED]
   if (unavailableStatuses.includes(room.room_status)) {
     return {
@@ -383,6 +384,7 @@ const createRoomBooking = async (bookingData, req) => {
 
     // Check if all rooms are available
     const allAvailable = roomAvailabilityResults.every(result => result.available === true)
+    console.log("allAvailable",roomAvailabilityResults)
     if (!allAvailable) throw new Error("Room is not available for selected dates.")
 
     // Process guest data
@@ -416,7 +418,7 @@ const createRoomBooking = async (bookingData, req) => {
         booking_status: isToday ? RoomBookingStatus.CHECK_IN : RoomBookingStatus.BOOKED,
         services: bookingData?.package_ids || []
       }, {
-      userId: '215cd88a-b951-44ac-a865-c51d497c28b4',
+      userId: req.user?.id || 'db1167fb-de69-4f0e-a257-0812311f4fab',
       remark: 'New reservation created'
     },
       { transaction }
@@ -464,7 +466,7 @@ const createRoomBooking = async (bookingData, req) => {
               item_description: roomPrice.room.room_type,
               details: roomPrice.room.room_number,
             },
-            "215cd88a-b951-44ac-a865-c51d497c28b4",
+            req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
             transaction,
           )
         }
@@ -487,7 +489,7 @@ const createRoomBooking = async (bookingData, req) => {
               item_description: service.service.package_name,
               details: '',
             },
-            "215cd88a-b951-44ac-a865-c51d497c28b4",
+           req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
             transaction,
           )
         }
@@ -506,7 +508,7 @@ const createRoomBooking = async (bookingData, req) => {
               is_taxable: true,
               tax_rate: GST_RATES.STANDARD,
             },
-            "215cd88a-b951-44ac-a865-c51d497c28b4",
+           req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
             transaction,
           )
         }
@@ -832,7 +834,7 @@ const avaibilityToChangeRoom = async (req) => {
           where: { id: reservation_id },
         },
         {
-          userId: '215cd88a-b951-44ac-a865-c51d497c28b4',
+          userId:req.user?.id || 'db1167fb-de69-4f0e-a257-0812311f4fab',
           remark: 'Reassignment',
         }
       );
@@ -851,7 +853,7 @@ const avaibilityToChangeRoom = async (req) => {
     //   }, {
     //   where: { id: reservation_id }
     // }, {
-    //   userId: '215cd88a-b951-44ac-a865-c51d497c28b4',
+    //   userId: 'db1167fb-de69-4f0e-a257-0812311f4fab',
     //   remark: 'Reassignment '
     // },
     // );
@@ -862,7 +864,6 @@ const avaibilityToChangeRoom = async (req) => {
     throw error;
   }
 };
-
 
 const quickBookingReservatation = async (req) => {
   const {
@@ -898,7 +899,7 @@ const quickBookingReservatation = async (req) => {
     // await BookingLog.create({
     //     reservation_id: reservation.id,
     //     action: 'CREATE',
-    //     performed_by: '215cd88a-b951-44ac-a865-c51d497c28b4', //req.user.id,  // here staff id will be replace this UUID
+    //     performed_by: 'db1167fb-de69-4f0e-a257-0812311f4fab', //req.user.id,  // here staff id will be replace this UUID
     //     remarks: `Quick sReservation created for room `
     // });
   }
@@ -1367,18 +1368,17 @@ const getAllReservationData = async (req) => {
   return { reservation: enrichedReservations, pagination };
 };
 
-
-const createPaymentService = async (body, userId = null) => {
-  userId= '215cd88a-b951-44ac-a865-c51d497c28b4';
-  const { reservation_id, payment_method, amount, transaction_id, reference_number, notes } = body;
-
-  if (!reservation_id || !payment_method ) {
-    const error = new Error("reservation_id, payment_method are required");
-    error.statusCode = httpStatus.BAD_REQUEST;
-    throw error;
+const createPaymentService = async (body, userId = null, transaction = null) => {
+  const { reservation_id, payment_method='cash', amount, transaction_id, reference_number, notes } = body;
+  if (!reservation_id) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "reservation_id is required");
   }
 
-  const transaction = await sequelize.transaction();
+  const shouldCommit = !transaction;
+  if (shouldCommit) {
+    transaction = await sequelize.transaction();
+  }
+
   try {
     // 1. Get reservation
     const reservation = await Reservation.findOne({
@@ -1387,7 +1387,6 @@ const createPaymentService = async (body, userId = null) => {
     });
 
     if (!reservation) {
-      await transaction.rollback();
       throw new ApiError(httpStatus.NOT_FOUND, "Reservation not found");
     }
 
@@ -1398,12 +1397,11 @@ const createPaymentService = async (body, userId = null) => {
     });
 
     if (!folio) {
-      await transaction.rollback();
       throw new ApiError(httpStatus.NOT_FOUND, "Folio not found for reservation");
     }
 
     // 3. Generate invoice from folio
-    const invoice = await generateInvoiceFromFolio(folio.id, userId);
+    const invoice = await generateInvoiceFromFolio(folio.id, userId, transaction);
 
     // 4. Process payment (using invoice)
     const payment = await processPayment(
@@ -1412,19 +1410,155 @@ const createPaymentService = async (body, userId = null) => {
         reservation_id,
         guest_id: reservation.guest_id,
         payment_method,
-        amount:invoice.total_amount || amount,
+        amount: amount || invoice.total_amount,
         transaction_id,
         reference_number,
         notes,
       },
-      userId
+      userId,
+      transaction
     );
 
-    await transaction.commit();
+    if (shouldCommit) {
+      await transaction.commit();
+    }
     return { invoice, payment };
   } catch (error) {
-    await transaction.rollback();
+    if (shouldCommit) {
+      await transaction.rollback();
+    }
     throw error;
+  }
+};
+
+const processCheckout = async (reservationId, checkoutData, userId='db1167fb-de69-4f0e-a257-0812311f4fab') => {
+  console.log("reservationId",reservationId)
+  const transaction = await sequelize.transaction();
+  try {
+    // 1. Retrieve the reservation with all necessary associations
+    const reservation = await Reservation.findOne({
+      where: { id: reservationId },
+      include: [
+        { 
+          model: Guests, 
+          as: 'guest',
+          include: [{ model: GuestDetail, as: 'guest_details' }]
+        },
+        { 
+          model: Folio, 
+          as: 'folios',
+          include: [
+            { model: FolioCharge, as: 'charges' }
+          ]
+        }
+      ],
+      transaction
+    });
+
+    if (!reservation) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Reservation not found');
+    }
+
+    // 2. Validate reservation can be checked out
+    if (reservation.booking_status === 'check_out') {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Reservation already checked out');
+    }
+
+    if (reservation.booking_status === 'cancelled') {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Cancelled reservation cannot be checked out');
+    }
+
+    // 3. Get the active folio or create one if it doesn't exist
+    let activeFolio = reservation.folios.find(f => f.status === 'active');
+    if (!activeFolio) {
+      activeFolio = await createFolio(reservationId, reservation.guest_id, transaction);
+    }
+
+    // 4. Calculate outstanding balance
+    const folioTotals = await updateFolioTotals(activeFolio.id, transaction);
+    const balance = folioTotals.balance;
+
+    // 5. Process payment if amount > 0
+    let paymentResult = null;
+    if (checkoutData.paymentAmount > 0) {
+      paymentResult = await createPaymentService({
+        reservation_id: reservationId,
+        payment_method: checkoutData.paymentMethod,
+        amount: checkoutData.paymentAmount,
+        transaction_id: checkoutData.transactionId,
+        reference_number: checkoutData.referenceNumber,
+        notes: checkoutData.paymentNotes,
+        status: 'completed'
+      }, userId, transaction);
+    }
+
+    // 6. Create final invoice if not already created by payment service
+    let invoice = paymentResult?.invoice;
+    if (!invoice) {
+      invoice = await generateInvoiceFromFolio(activeFolio.id, userId, transaction);
+    }
+
+    // 7. Update reservation status
+    await reservation.update({
+      booking_status: 'check_out',
+      checked_out_at: new Date()
+    }, { transaction });
+
+    // 8. Update room statuses
+    const roomIds = reservation.rooms.map(room => room.room_id);
+    await RoomNumber.update(
+      { 
+        is_available: true,
+        room_status: 'vacant',
+        last_maintenance_date: new Date()
+      },
+      { 
+        where: { id: roomIds },
+        transaction 
+      }
+    );
+
+    // 9. Close the folio
+    await Folio.update({
+      status: 'closed',
+      closed_date: new Date(),
+      balance: balance - (checkoutData.paymentAmount || 0)
+    }, { 
+      where: { id: activeFolio.id },
+      transaction 
+    });
+
+    // 10. Create booking log
+    await BookingLog.create({
+      reservation_id: reservation.id,
+      guest_id: reservation.guest_id,
+      action: 'check_out',
+      performed_by: userId,
+      remarks: 'Guest checked out'
+    }, { transaction });
+
+    await transaction.commit();
+
+    return {
+      reservation: await Reservation.findByPk(reservationId, {
+        include: [
+          { model: Guests, as: 'guest' },
+          { model: Folio, as: 'folios' },
+          { model: Invoice, as: 'invoices' }
+        ]
+      }),
+      invoice: invoice,
+      payment: paymentResult?.payment,
+      balance: balance - (checkoutData.paymentAmount || 0)
+    };
+
+  } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+    console.error('Checkout error:', error);
+    throw error;
+  
   }
 };
 
@@ -1432,5 +1566,5 @@ module.exports = {
   getallGuestReservation, guestReservationDetails, avaibilityToChangeRoom,
   quickBookingReservatation, updateBookingReservation, createRoomBooking, getRoomAvailability, updateReservation,
   exportReservations, getLogsForReservation, quickBookingReservatation, getAllReservationData, fetchReservationsInRange, 
-  calculateReservationPrices,createPaymentService
+  calculateReservationPrices,createPaymentService,processCheckout
 }

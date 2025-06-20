@@ -12,6 +12,7 @@ const { errorConverter, errorHandler } = require("./middlewares/error");
 const ApiError = require("./utils/ApiError");
 const swaggerRouter = require("./routes/v1/docs.route");
 const { connectDB } = require("./config/postgres");
+const initInventoryConsumptionTable = require('./utils/initInventoryConsumptionTable');
 const http = require("http");
 
 const app = express();
@@ -20,6 +21,10 @@ const startServer = async () => {
   try {
     await connectDB();
     console.log("Connected to PostgreSQL");
+
+    // Initialize inventory consumption tracking
+    await initInventoryConsumptionTable();
+    console.log('Inventory consumption tracking initialized');
 
     const server = http.createServer(app);
     server.listen(3000, "0.0.0.0", () =>

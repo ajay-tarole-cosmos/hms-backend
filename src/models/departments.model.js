@@ -35,6 +35,11 @@ Department.associate = (models) => {
     foreignKey: "department_id",
     as: "inventory_items",
   });
+  
+  Department.hasMany(models.ProcurementRequest, {
+    foreignKey: "department_id",
+    as: "procurementRequest",
+  });
 };
 
 

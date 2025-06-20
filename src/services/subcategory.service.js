@@ -1,14 +1,22 @@
-const { Subcategory, Category ,Sequelize} = require('../models');
+const { Subcategory, Category ,Sequelize, Variant} = require('../models');
 const { Op } = require('sequelize');
 const paginate = require("../models/plugins/paginate.plugin");
 
 const createSubcategory = async (payload) => {
-  const { category_id, name, description } = payload;
+  console.log(":payload",payload)
+  const { category_id, name, description, image, price } = payload;
 
   const category = await Category.findByPk(category_id);
-  if (!category) throw new Error('Invalid category_id');
+  if (!category) throw new Error("Invalid category_id");
 
-  const subcategory = await Subcategory.create({ category_id, name, description });
+  const subcategory = await Subcategory.create({
+    category_id,
+    name,
+    description,
+    image,
+    price,
+  });
+
   return subcategory;
 };
 
@@ -81,6 +89,7 @@ const getSubcategoriesByCategoryId = async (req) => {
 
   const options = {
     include: [{ model: Category, as: 'category' }],
+    include:[{model: Variant,as:'variants'}],
     sortBy: sortExpression,
   };
 
@@ -99,7 +108,7 @@ const getSubcategoriesByCategoryId = async (req) => {
 };
 
 const updateSubcategory = async (id, payload) => {
-  const { name, description, category_id } = payload;
+  const { name, description, category_id, image, price } = payload;
 
   const subcategory = await Subcategory.findByPk(id);
   if (!subcategory) throw new Error('Subcategory not found');
@@ -110,12 +119,15 @@ const updateSubcategory = async (id, payload) => {
     subcategory.category_id = category_id;
   }
 
-  subcategory.name = name || subcategory.name;
-  subcategory.description = description || subcategory.description;
+  if (name !== undefined) subcategory.name = name;
+  if (description !== undefined) subcategory.description = description;
+  if (image !== undefined || image !== null) subcategory.image = image;
+  if (price !== undefined) subcategory.price = price;
 
   await subcategory.save();
   return subcategory;
 };
+
 
 const deleteSubcategory = async (id) => {
   const subcategory = await Subcategory.findByPk(id);

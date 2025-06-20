@@ -353,8 +353,8 @@ const getRoomList = async (req) => {
   const {
     sortBy = "created_at",
     sortOrder = "desc",
-    limit = 10,
-    page = 1,
+    limit ,
+    page,
     room_type,
     room_status,
     start_date,
@@ -372,27 +372,6 @@ const getRoomList = async (req) => {
   }
 
   if (start_date || end_date) {
-    // let whereCondition = {};
-    // if (end_date) whereCondition.check_in_date_time = { [Op.lt]: start_date }
-    // if (start_date) whereCondition.check_out_date_time = { [Op.gt]: start_date }
-
-    // const overlappingReservations = await Reservation.findAll({
-    //   where: whereCondition,
-    //   attributes: ["rooms"],
-    // });
-    // // reservedRoomNumberIds = overlappingReservations.map(r => r.room_number_id);
-    // let reservedRoomNumberIds = [];
-    // overlappingReservations.forEach(r => {
-    //   r?.rooms?.forEach((item)=>{
-    //    reservedRoomNumberIds.push(item.room_id)
-    //   })
-    // });
-
-    // if (reservedRoomNumberIds.length > 0) {
-    //   filter.id = {
-    //     [Op.notIn]: reservedRoomNumberIds,
-    //   };
-    // }
     let resultData = await getRoomStatusForDate(start_date);
 
     const totalResults = resultData?.length || 0;
@@ -419,12 +398,15 @@ const getRoomList = async (req) => {
       pagination,
     };
   }else{
+    const isPaginationEnabled = limit !== undefined && page !== undefined;
 
   const options = {
-    limit: parseInt(limit),
-    page: parseInt(page),
     sortBy: [[sortBy, sortOrder.toUpperCase()]],
   };
+  if (isPaginationEnabled) {
+    options.limit = parseInt(limit, 10);
+    options.page = parseInt(page, 10);
+  }
   const { data, pagination } = await paginate(RoomNumber, filter, options);
 
   let rooms = data.map(room => room.get({ plain: true }));
@@ -486,6 +468,7 @@ async function getRoomStatusForDate(targetDate) {
 
 
 const updateRoom = async (req) => {
+  
   const { room_id } = req.params;
   if (!room_id) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Room ID is required");
@@ -508,6 +491,7 @@ const updateRoom = async (req) => {
     price,
   } = req.body;
 console.log(" req.body", req.body)
+
   const imageUrl = req.files?.image?.[0]?.path ?? null;
 
   const toIntOrNull = (val) => {
@@ -539,8 +523,6 @@ console.log(" req.body", req.body)
     }
   }
 
-
-  
   await room.update({
     number_of_room: toIntOrNull(number_of_room) ?? room.number_of_room,
     room_type: room_type ?? room.room_type,
@@ -553,7 +535,12 @@ console.log(" req.body", req.body)
     price: toFloatOrNull(price) ?? room.price,
     image_url: imageUrl || room.image_url,
   });
-
+  if (room_type && room_type !== room.room_type) {
+    await RoomNumber.update(
+      { room_type },
+      { where: { room_id } }
+    );
+  }
   return room;
 };
 

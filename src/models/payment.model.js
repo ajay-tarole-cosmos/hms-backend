@@ -80,7 +80,6 @@ Payments.associate = (models) => {
   Payments.belongsTo(models.Invoice, { foreignKey: "invoice_id", as: "invoice" })
   Payments.belongsTo(models.Reservation, { foreignKey: "reservation_id", as: "reservation" })
   Payments.belongsTo(models.Staff, { foreignKey: "processed_by", as: "processor" })
-
 };
 
 

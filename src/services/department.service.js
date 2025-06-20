@@ -6,8 +6,6 @@ const paginate = require("../models/plugins/paginate.plugin");
 exports.create = async payload => Department.create(payload);
 
 exports.findAll = async (req) => {
-  // const { page, limit, sortBy = [['created_at', 'DESC']] } = query;
-  // return paginate(Department, {}, { page, limit, sortBy });
   const {
     name,
     sortBy = 'created_at',
@@ -19,6 +17,7 @@ exports.findAll = async (req) => {
   const filter = {};
   const orConditions = [];
 
+  // Name search (case-insensitive)
   if (name) {
     const lowerName = name.toLowerCase();
     orConditions.push(
@@ -28,6 +27,12 @@ exports.findAll = async (req) => {
     );
   }
 
+  // 👇 Permission-based filter
+  // if (!req.user.has_global_access) {
+  //   filter.id = req.user.department_id;
+  // }
+
+  // Add OR conditions if any
   if (orConditions.length > 0) {
     filter[Op.or] = orConditions;
   }
@@ -52,7 +57,21 @@ exports.findAll = async (req) => {
   return { departments, pagination };
 };
 
-exports.findById = async id => Department.findByPk(id, { include: ['categories'] });
+exports.findById = async (id, currentUser) => {
+  const whereClause = {};
+
+  if (!currentUser.has_global_access) {
+    whereClause.id = currentUser.department_id;
+  } else {
+    whereClause.id = id;
+  }
+
+  return Department.findOne({
+    where: whereClause,
+    include: ['categories'],
+  });
+};
+
 
 exports.update = async (id, payload) => {
   await Department.update(payload, { where: { id } });

@@ -3,61 +3,43 @@ const { Op } = require('sequelize');
 const paginate = require("../models/plugins/paginate.plugin");
 
 const createVariant = async (payload) => {
-  const {
-    category_id,
-    subcategory_id,
-    name,
-    price,
-    flavor,
-    size,
-    quantity,
-  } = payload;
+  const { subcategory_id, name, price, flavor, size } = payload;
 
-  if (subcategory_id) {
-    const subcategory = await Subcategory.findByPk(subcategory_id);
-    if (!subcategory) throw new Error('Invalid subcategory_id');
-  }
+  // Validate subcategory
+  const subcategory = await Subcategory.findByPk(subcategory_id);
+  if (!subcategory) throw new Error("Invalid subcategory_id");
 
-  if (category_id) {
-    const category = await Category.findByPk(category_id);
-    if (!category) throw new Error('Invalid category_id');
-  }
-
+  // Create variant
   const variant = await Variant.create({
-    category_id,
     subcategory_id,
     name,
     price,
     flavor,
     size,
-    quantity,
-    sold: quantity === 0,
   });
 
   return variant;
 };
 
-const getAllVariants = async (req) => {
+const getAllVariants = async (query) => {
   const {
     name,
     flavor,
     size,
+    subcategory_id,
     sortBy = 'created_at',
     sortOrder = 'desc',
     limit,
     page,
-  } = req.query;
-
-  const { subcategory_id } = req.params;
+  } = query;
 
   const filter = {};
   const andConditions = [];
 
   if (name) {
-    const lowerName = name.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.name')), {
-        [Op.like]: `%${lowerName}%`,
+        [Op.like]: `%${name.toLowerCase()}%`,
       })
     );
   }
@@ -67,19 +49,17 @@ const getAllVariants = async (req) => {
   }
 
   if (flavor) {
-    const lowerFlavor = flavor.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.flavor')), {
-        [Op.like]: `%${lowerFlavor}%`,
+        [Op.like]: `%${flavor.toLowerCase()}%`,
       })
     );
   }
 
   if (size) {
-    const lowerSize = size.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.size')), {
-        [Op.like]: `%${lowerSize}%`,
+        [Op.like]: `%${size.toLowerCase()}%`,
       })
     );
   }
@@ -89,27 +69,27 @@ const getAllVariants = async (req) => {
   }
 
   const sortDirection = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-  const sortExpression = [Sequelize.col(`Variant.${sortBy}`), sortDirection];
-
-  const isPaginationEnabled = limit !== undefined && page !== undefined;
+  const sortField = sortBy || 'created_at';
 
   const include = [
-    { model: Subcategory, as: 'subcategory' },
-    { model: Category, as: 'category' },
+    {
+      model: Subcategory,
+      as: 'subcategory',
+    }
   ];
 
   const options = {
-    sortBy: [sortExpression],
+    sortBy: [[Sequelize.col(`Variant.${sortField}`), sortDirection]],
     include,
   };
 
-  if (isPaginationEnabled) {
+  if (limit && page) {
     options.limit = parseInt(limit, 10);
     options.page = parseInt(page, 10);
   }
 
   const { data, pagination } = await paginate(Variant, filter, options);
-  const variants = data.map((v) => v.get({ plain: true }));
+  const variants = data.map(v => v.get({ plain: true }));
 
   return { variants, pagination };
 };
@@ -118,7 +98,6 @@ const getVariantById = async (id) => {
   const variant = await Variant.findByPk(id, {
     include: [
       { model: Subcategory, as: 'subcategory' },
-      { model: Category, as: 'category' },
     ],
   });
 
@@ -139,36 +118,32 @@ const getVariantsBySubcategoryId = async (req) => {
 
   const { subcategory_id } = req.params;
 
-  const filter = {};
+  const filter = {
+    subcategory_id,
+  };
+
   const andConditions = [];
 
   if (name) {
-    const lowerName = name.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.name')), {
-        [Op.like]: `%${lowerName}%`,
+        [Op.like]: `%${name.toLowerCase()}%`,
       })
     );
   }
 
-  if (subcategory_id) {
-    filter.subcategory_id = subcategory_id;
-  }
-
   if (flavor) {
-    const lowerFlavor = flavor.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.flavor')), {
-        [Op.like]: `%${lowerFlavor}%`,
+        [Op.like]: `%${flavor.toLowerCase()}%`,
       })
     );
   }
 
   if (size) {
-    const lowerSize = size.toLowerCase();
     andConditions.push(
       Sequelize.where(Sequelize.fn('lower', Sequelize.col('Variant.size')), {
-        [Op.like]: `%${lowerSize}%`,
+        [Op.like]: `%${size.toLowerCase()}%`,
       })
     );
   }
@@ -177,51 +152,32 @@ const getVariantsBySubcategoryId = async (req) => {
     filter[Op.and] = andConditions;
   }
 
+  const sortField = sortBy || 'created_at';
   const sortDirection = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-  const sortExpression = [Sequelize.col(`Variant.${sortBy}`), sortDirection];
-
-  const isPaginationEnabled = limit !== undefined && page !== undefined;
-
-  const include = [
-    { model: Subcategory, as: 'subcategory' },
-    { model: Category, as: 'category' },
-  ];
 
   const options = {
-    sortBy: [sortExpression],
-    include,
+    sortBy: [[Sequelize.col(`Variant.${sortField}`), sortDirection]],
+    include: [
+      {
+        model: Subcategory,
+        as: 'subcategory',
+      }
+    ],
   };
 
-  if (isPaginationEnabled) {
+  if (limit && page) {
     options.limit = parseInt(limit, 10);
     options.page = parseInt(page, 10);
   }
 
   const { data, pagination } = await paginate(Variant, filter, options);
-  const variants = data.map((v) => v.get({ plain: true }));
+  const variants = data.map(v => v.get({ plain: true }));
 
-  return { data:variants, pagination };
-  // return await Variant.findAll({
-  //   where: { subcategory_id },
-  //   include: [
-  //     { model: Subcategory, as: 'subcategory' },
-  //     { model: Category, as: 'category' }
-  //   ],
-  //   order: [['created_at', 'DESC']],
-  //   logging: console.log, // 👈 this helps debug
-  // });
+  return { data: variants, pagination };
 };
 
 const updateVariant = async (id, payload) => {
-  const {
-    name,
-    price,
-    flavor,
-    size,
-    quantity,
-    category_id,
-    subcategory_id,
-  } = payload;
+  const { name, price, flavor, size, subcategory_id } = payload;
 
   const variant = await Variant.findByPk(id);
   if (!variant) throw new Error('Variant not found');
@@ -232,20 +188,10 @@ const updateVariant = async (id, payload) => {
     variant.subcategory_id = subcategory_id;
   }
 
-  if (category_id && category_id !== variant.category_id) {
-    const category = await Category.findByPk(category_id);
-    if (!category) throw new Error('Invalid category_id');
-    variant.category_id = category_id;
-  }
-
   if (name !== undefined) variant.name = name;
   if (price !== undefined) variant.price = price;
   if (flavor !== undefined) variant.flavor = flavor;
   if (size !== undefined) variant.size = size;
-  if (quantity !== undefined) {
-    variant.quantity = quantity;
-    variant.sold = quantity === 0;
-  }
 
   await variant.save();
   return variant;

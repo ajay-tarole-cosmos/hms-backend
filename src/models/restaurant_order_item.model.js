@@ -12,10 +12,15 @@ const RestaurantOrderItem = sequelize.define('RestaurantOrderItem', {
     allowNull: false,
     comment: 'FK to restaurant_orders.id',
   },
-  variant_id: {
+  subcategory_id: {
     type: DataTypes.UUID,
     allowNull: false,
-    comment: 'FK to variants.id',
+    comment: 'FK to subcategories.id',
+  },
+  variant_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'FK to variants.id (variant should belong to subcategory)',
   },
   quantity: {
     type: DataTypes.INTEGER,
@@ -26,6 +31,11 @@ const RestaurantOrderItem = sequelize.define('RestaurantOrderItem', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
   },
+  variant_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+  },  
   total_price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
@@ -49,11 +59,15 @@ RestaurantOrderItem.associate = (db) => {
     as: 'order',
   });
 
+  RestaurantOrderItem.belongsTo(db.Subcategory, {
+    foreignKey: 'subcategory_id',
+    as: 'subcategory',
+  });
+
   RestaurantOrderItem.belongsTo(db.Variant, {
     foreignKey: 'variant_id',
     as: 'variant',
   });
 };
 
-
-module.exports = RestaurantOrderItem; 
+module.exports = RestaurantOrderItem;

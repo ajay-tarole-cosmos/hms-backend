@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const tableBookingController = require('../../controllers/tableBooking.controller');
 
+router.post('/table-bookings', tableBookingController.bookTable);
+router.post('/tables/:id/status', tableBookingController.getTableStatus);
+router.post('/table-bookings-list', tableBookingController.listBookings);
+router.put('/table-bookings/:id', tableBookingController.updateTableBooking);
+router.post('/table-bookings/:id/cancel', tableBookingController.cancelTableBooking);
+
+module.exports = router; 
+
 /**
  * @swagger
  * tags:
@@ -42,7 +50,6 @@ const tableBookingController = require('../../controllers/tableBooking.controlle
  *               status: "booked"
  *               order_id: "uuid-order"
  */
-router.post('/table-bookings', tableBookingController.bookTable);
 
 /**
  * @swagger
@@ -67,7 +74,6 @@ router.post('/table-bookings', tableBookingController.bookTable);
  *               name: "Table 1"
  *               status: "available"
  */
-router.post('/tables/:id/status', tableBookingController.getTableStatus);
 
 /**
  * @swagger
@@ -100,7 +106,6 @@ router.post('/tables/:id/status', tableBookingController.getTableStatus);
  *                 status: "booked"
  *                 order_id: "uuid-order"
  */
-router.post('/table-bookings-list', tableBookingController.listBookings);
 
 /**
  * @swagger
@@ -141,7 +146,6 @@ router.post('/table-bookings-list', tableBookingController.listBookings);
  *               status: "booked"
  *               order_id: "uuid-order"
  */
-router.put('/table-bookings/:id', tableBookingController.updateTableBooking);
 
 /**
  * @swagger
@@ -167,6 +171,3 @@ router.put('/table-bookings/:id', tableBookingController.updateTableBooking);
  *                 id: "uuid-booking"
  *                 status: "cancelled"
  */
-router.post('/table-bookings/:id/cancel', tableBookingController.cancelTableBooking);
-
-module.exports = router; 

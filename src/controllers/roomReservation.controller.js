@@ -415,7 +415,6 @@ const updateReservationRoomById= catchAsync(async (req,res)=>{
   });
 })
 
-
 const getAllReservationDetailList= catchAsync(async (req,res)=>{
   const {reservation,pagination} = await roomReservation.getAllReservationData(req);
   sendResponse(res, {
@@ -426,89 +425,8 @@ const getAllReservationDetailList= catchAsync(async (req,res)=>{
   });
 })
 
-
-// const createPayment = catchAsync(async (req, res) => {
-//   const { reservation_id, payment_method, amount, transaction_id, reference_number, notes } = req.body;
-
-//   // Validate required fields
-//   if (!reservation_id || !payment_method || !amount) {
-//     return res.status(httpStatus.BAD_REQUEST).json({
-//       success: false,
-//       message: "reservation_id, payment_method, and amount are required",
-//     });
-//   }
-
-//   const transaction = await sequelize.transaction();
-//   try {
-//     const reservation = await Reservation.findOne({
-//       where: { id: reservation_id },
-//       transaction,
-//     });
-
-//     if (!reservation) {
-//       await transaction.rollback();
-//       return res.status(httpStatus.NOT_FOUND).json({
-//         success: false,
-//         message: "Reservation not found",
-//       });
-//     }
-
-//     // Create payment record
-//     const payment = await Payments.create(
-//       {
-//         invoice_id: null, // Can be updated later if invoices are generated
-//         guest_id: reservation.guest_id,
-//         reservation_id,
-//         payment_method,
-//         amount,
-//         transaction_id,
-//         reference_number,
-//         status: "completed",
-//         notes,
-//         // processed_by: req.user?.id || "215cd88a-b951-44ac-a865-c51d497c28b4",
-//       },
-//       { transaction }
-//     );
-
-//     // Update reservation payment status (if needed)
-//     // if (reservation.payment_status !== "paid") {
-//     //   await Reservation.update(
-//     //     { payment_status: "paid" },
-//     //     { where: { id: reservation_id }, transaction }
-//     //   );
-//     // }
-
-//     // Update folio charges (mark as paid)
-//     const folio = await Folio.findOne({
-//       where: { reservation_id },
-//       transaction,
-//     });
-
-//     if (folio) {
-//       await FolioCharge.update(
-//         { payment_status: true }, // 1 = Paid
-//         { where: { folio_id: folio.id }, transaction }
-//       );
-//     }
-
-//     await transaction.commit();
-
-//     res.status(httpStatus.CREATED).json({
-//       success: true,
-//       message: "Payment recorded successfully",
-//       data: payment,
-//     });
-//   } catch (error) {
-//     await transaction.rollback();
-//     console.error("Payment processing error:", error);
-//     res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: error.message || "Failed to process payment",
-//     });
-//   }
-// });
-
 const createPayment = catchAsync(async (req, res) => {
+  console.log("req.body",req.body)
     const payment = await roomReservation.createPaymentService(req.body);
     res.status(httpStatus.CREATED).json({
       success: true,
@@ -517,6 +435,26 @@ const createPayment = catchAsync(async (req, res) => {
     });
 });
 
+const CheckoutBookinng=catchAsync(async (req, res) => {
+  const { reservationId } = req.params;
+  const { payment_method, payment_amount, notes } = req.body;
+  const processed_by = req.user?.id;
+  console.log("reservationId",reservationId,processed_by)
+
+  const checkoutResult = await roomReservation.processCheckout(
+    reservationId,
+    {
+      payment_method, payment_amount, notes, processed_by
+    },
+    req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab"
+  );
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: "Checkout processed successfully",
+    data: checkoutResult
+  });
+});
 module.exports = { getallGuestReservation, getGuestReservation,exportReservations, getReservations,calculatedPrices,
   changeOrReassignRoom, quickRoomBooking, createReservation, updateReservation,getAllRoomAvailability,getReservationLogs,updateReservationRoomById,getAllReservationDetailList 
-,createPayment}
+,createPayment,CheckoutBookinng}

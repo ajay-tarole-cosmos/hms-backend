@@ -88,11 +88,24 @@ const getAmenityById = catchAsync(async (req, res) => {
 });
 
 const createAmenity = catchAsync(async (req, res) => {
-  const data = await hotelService.createAmenity(req.body);
-  sendResponse(res, { statusCode: httpStatus.CREATED, message: "Amenity created", success: true, data });
+  console.log("req.body", req.body);
+  
+  const data = await hotelService.createAmenity({
+    name: req.body.amenity_name,  
+  });
+
+  console.log("data", data);
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    message: "Amenity created",
+    success: true,
+    data,
+  });
 });
 
 const updateAmenity = catchAsync(async (req, res) => {
+  console.log("req.body  for maneihjn",req.body)
   const data = await hotelService.updateAmenity(req.params.id, req.body);
   sendResponse(res, { statusCode: httpStatus.OK, message: "Amenity updated", success: true, data });
 });

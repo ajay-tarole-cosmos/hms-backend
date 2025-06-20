@@ -14,9 +14,14 @@ const {
   Room,
   sequelize,
   Package,
+  RestaurantFolio,
+  RestaurantFolioCharge,
+  RestaurantOrder,
+  RestaurantInvoice,
 } = require("../models")
 const moment = require("moment")
-const { generateInvoiceNumber, generateFolioNumber } = require("../utils/numberGenerators")
+const { generateInvoiceNumber, generateFolioNumber } = require("../utils/NumberGenerators")
+const RestaurantInvoiceItem = require("../models/restaurant_Invoice_Item")
 
 // GST Configuration
 const GST_RATES = {
@@ -110,7 +115,7 @@ const updateFolioTotals = async (folioId, transaction = null) => {
       0,
     )
     // const totalTax = charges.reduce((sum, charge) => sum + Number.parseFloat(charge.tax_amount || 0), 0)
-    const totalTax = parseFloat(parseFloat(totalCharges * GST_RATES.STANDARD/100).toFixed(2))
+    const totalTax = parseFloat(parseFloat(totalCharges * GST_RATES.STANDARD / 100).toFixed(2))
     const folio = await Folio.findByPk(folioId, { transaction })
     if (!folio) {
       throw new Error(`Folio with ID ${folioId} not found`)
@@ -245,8 +250,11 @@ const generateRoomCharges = async (reservationId, roomNumberIds = [], transactio
  * 7. Close the folio
  * 8. Return complete invoice with all details
  */
-const generateInvoiceFromFolio = async (folioId, userId = null) => {
-  const transaction = await sequelize.transaction()
+const generateInvoiceFromFolio = async (folioId, userId = null, transaction = null) => {
+  const shouldCommit = !transaction;
+  if (shouldCommit) {
+    transaction = await sequelize.transaction();
+  }
 
   try {
     const folio = await Folio.findByPk(folioId, {
@@ -256,51 +264,22 @@ const generateInvoiceFromFolio = async (folioId, userId = null) => {
         { model: Guests, as: "guest" },
       ],
       transaction,
-    })
+    });
 
     if (!folio) {
-      throw new ApiError(httpStatus.NOT_FOUND, "Folio not found")
+      throw new ApiError(httpStatus.NOT_FOUND, "Folio not found");
     }
 
-    // Check if invoice already exists
-    const existingInvoice = await Invoice.findOne({
-      where: { reservation_id: folio.reservation_id },
-      transaction,
-    })
-
-    if (existingInvoice) {
-      // throw new ApiError(httpStatus.BAD_REQUEST, "Invoice already exists for this reservation")
-    }
-
-    const invoiceNumber = await generateInvoiceNumber()
+    const invoiceNumber = await generateInvoiceNumber();
 
     // Calculate invoice totals
-    let subtotal = 0
-    // let totalTaxAmount = 0
-    const taxBreakdown = {}
-
+    let subtotal = 0;
     folio.charges.forEach((charge) => {
-      const chargeAmount = Number.parseFloat(charge.amount || 0)
-      const taxAmount = 0
+      subtotal += Number.parseFloat(charge.amount || 0);
+    });
 
-      subtotal += chargeAmount
-
-      // Group taxes by rate for breakdown
-      // if (charge.is_taxable && charge.tax_rate > 0) {
-      //   const rate = charge.tax_rate
-      //   if (!taxBreakdown[rate]) {
-      //     taxBreakdown[rate] = { taxableAmount: 0, taxAmount: 0 }
-      //   }
-      //   taxBreakdown[rate].taxableAmount += chargeAmount
-      //   taxBreakdown[rate].taxAmount += taxAmount
-      // }
-      // totalTaxAmount += taxAmount
-
-    })
-
-    const totalTaxAmount = parseFloat(parseFloat(subtotal * GST_RATES.STANDARD/100).toFixed(2))
-    const totalAmount = subtotal + totalTaxAmount
-
+    const totalTaxAmount = parseFloat(parseFloat(subtotal * GST_RATES.STANDARD / 100).toFixed(2));
+    const totalAmount = subtotal + totalTaxAmount;
 
     // Create invoice
     const invoice = await Invoice.create(
@@ -308,25 +287,24 @@ const generateInvoiceFromFolio = async (folioId, userId = null) => {
         invoice_number: invoiceNumber,
         reservation_id: folio.reservation_id,
         guest_id: folio.guest_id,
+        folio_id: folioId,
         subtotal: subtotal,
         tax_amount: totalTaxAmount,
         total_amount: totalAmount,
         balance_amount: totalAmount || 0,
         paid_amount: 0,
         due_date: moment().add(7, "days").toDate(),
-        status: "draft",
-        tax_breakdown: taxBreakdown,
+        status: "sent",
         generated_by: userId,
         generated_date: new Date(),
       },
       { transaction },
-    )
+    );
 
     // Create invoice items from folio charges
     for (const charge of folio.charges) {
-      
-    const tax_amount = parseFloat(parseFloat(charge.amount * GST_RATES.STANDARD/100).toFixed(2))
-
+      const tax_amount = parseFloat(parseFloat(charge.amount * GST_RATES.STANDARD / 100).toFixed(2));
+console.log("tax_amount",tax_amount)
       await InvoiceItem.create(
         {
           invoice_id: invoice.id,
@@ -335,37 +313,28 @@ const generateInvoiceFromFolio = async (folioId, userId = null) => {
           quantity: charge.quantity,
           unit_price: charge.unit_price,
           amount: charge.amount,
-          tax_rate: charge.tax_rate,
+          tax_rate: GST_RATES.STANDARD,
           tax_amount: tax_amount,
-          total_price: charge.total_amount + tax_amount,
+          // total_price: charge.amount + tax_amount,
+          total_price: parseFloat(charge.amount || 0) + tax_amount,
           date_charged: charge.charge_date,
           is_taxable: charge.is_taxable,
-          // total_price: charge.total_price || charge.total_amount || 0,
         },
         { transaction },
-      )
+      );
     }
 
-    // Close folio
-    // await Folio.update(
-    //   {
-    //     status: "closed",
-    //     closed_date: new Date(),
-    //     invoice_id: invoice.id,
-    //   },
-    //   {
-    //     where: { id: folioId },
-    //     transaction,
-    //   },
-    // )
-
-    await transaction.commit()
-    return invoice
+    if (shouldCommit) {
+      await transaction.commit();
+    }
+    return invoice;
   } catch (error) {
-    await transaction.rollback()
-    throw error
+    if (shouldCommit) {
+      await transaction.rollback();
+    }
+    throw error;
   }
-}
+};
 
 /**
  * PAYMENT RECORD CREATION PROCESS
@@ -378,29 +347,31 @@ const generateInvoiceFromFolio = async (folioId, userId = null) => {
  * 6. Generate payment receipt number
  * 7. Log payment in audit trail
  */
-const processPayment = async (paymentData, userId = null) => {
-  const transaction = await sequelize.transaction()
+const processPayment = async (paymentData, userId = null, transaction = null) => {
+  const shouldCommit = !transaction;
+  if (shouldCommit) {
+    transaction = await sequelize.transaction();
+  }
 
   try {
-    const invoice = await Invoice.findByPk(paymentData.invoice_id, { transaction })
+    const invoice = paymentData.invoice_id 
+      ? await Invoice.findByPk(paymentData.invoice_id, { transaction }) 
+      : null;
 
-    if (!invoice) {
-      throw new ApiError(httpStatus.NOT_FOUND, "Invoice not found")
-    }
-
-    const paymentAmount = Number.parseFloat(paymentData.amount)
+    const paymentAmount = Number.parseFloat(paymentData.amount);
     if (paymentAmount <= 0) {
-      throw new ApiError(httpStatus.BAD_REQUEST, "Payment amount must be greater than zero")
+      throw new ApiError(httpStatus.BAD_REQUEST, "Payment amount must be greater than zero");
     }
 
     // Generate payment reference if not provided
     const referenceNumber =
-      paymentData.reference_number || `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      paymentData.reference_number || `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     const payment = await Payments.create(
       {
         invoice_id: paymentData.invoice_id,
-        reservation_id: invoice.reservation_id,
+        reservation_id: paymentData.reservation_id,
+        guest_id: paymentData.guest_id,
         payment_method: paymentData.payment_method || "cash",
         amount: paymentAmount,
         transaction_id: paymentData.transaction_id,
@@ -410,58 +381,62 @@ const processPayment = async (paymentData, userId = null) => {
         notes: paymentData.notes,
         processed_by: userId,
         currency: paymentData.currency || "INR",
-        exchange_rate: paymentData.exchange_rate || 1.0,
-        guest_id: paymentData.guest_id
+        exchange_rate: paymentData.exchange_rate || 1.0
       },
       { transaction },
-    )
+    );
 
-    // Update invoice amounts
-    const currentPaid = Number.parseFloat(invoice.paid_amount || 0)
-    const totalPaid = currentPaid + paymentAmount
-    const totalAmount = Number.parseFloat(invoice.total_amount)
-    const balance = Math.max(0, totalAmount - totalPaid)
+    // Update invoice amounts if invoice exists
+    if (invoice) {
+      const currentPaid = Number.parseFloat(invoice.paid_amount || 0);
+      const totalPaid = currentPaid + paymentAmount;
+      const totalAmount = Number.parseFloat(invoice.total_amount);
+      const balance = Math.max(0, totalAmount - totalPaid);
 
-    // Determine invoice status
-    let status = "partially_paid"
-    if (balance <= 0) {
-      status = "paid"
-    } else if (totalPaid === 0) {
-      status = "sent"
-    } else if (new Date() > new Date(invoice.due_date) && balance > 0) {
-      status = "overdue"
+      let status = "partially_paid";
+      if (balance <= 0) {
+        status = "paid";
+      } else if (totalPaid === 0) {
+        status = "sent";
+      } else if (new Date() > new Date(invoice.due_date) && balance > 0) {
+        status = "overdue";
+      }
+
+      await Invoice.update(
+        {
+          paid_amount: totalPaid,
+          balance_amount: balance,
+          status: status,
+          last_payment_date: new Date(),
+        },
+        {
+          where: { id: paymentData.invoice_id },
+          transaction,
+        },
+      );
     }
-
-    await Invoice.update(
-      {
-        paid_amount: totalPaid,
-        balance_amount: balance,
-        status: status,
-        last_payment_date: new Date(),
-      },
-      {
-        where: { id: paymentData.invoice_id },
-        transaction,
-      },
-    )
 
     // Update folio if still active
     const folio = await Folio.findOne({
-      where: { reservation_id: invoice.reservation_id },
+      where: { reservation_id: paymentData.reservation_id },
       transaction,
-    })
+    });
 
     if (folio) {
-      await updateFolioTotals(folio.id, transaction)
+      await updateFolioTotals(folio.id, transaction);
     }
 
-    await transaction.commit()
-    return payment
+    if (shouldCommit) {
+      await transaction.commit();
+    }
+    return payment;
   } catch (error) {
-    await transaction.rollback()
-    throw error
+    if (shouldCommit) {
+      await transaction.rollback();
+    }
+    throw error;
   }
-}
+};
 
 // Safe wrapper functions for error handling
 const safelyCreateFolio = async (reservationId, guestId, transaction = null) => {
@@ -496,14 +471,21 @@ const safelyAddChargeToFolio = async (folioId, chargeData, userId = null, transa
     return null
   }
   console.log("safely  add charge")
-
+  console.log("chargeData", chargeData)
   try {
     const unitPrice = Number.parseFloat(chargeData.unit_price || 0)
     const quantity = Number.parseInt(chargeData.quantity || 1)
-    const baseAmount = unitPrice * quantity - chargeData.discount
+    const discount = Number.parseFloat(chargeData.discount || 0);
+    const baseAmount = unitPrice * quantity - discount;
+    // const baseAmount = unitPrice * quantity - chargeData.discount
     const taxRate = Number.parseFloat(GST_RATES.STANDARD)
     const taxAmount = chargeData.is_taxable ? (baseAmount * taxRate) / 100 : 0
-    const totalAmount = baseAmount + taxAmount 
+    const totalAmount = baseAmount + taxAmount
+
+    console.log("totalAmount", totalAmount)
+    console.log("unitPrice", unitPrice, "taxRate", taxRate)
+    console.log("quantity", quantity)
+    console.log("taxAmount", taxAmount)
 
     if (isNaN(totalAmount)) {
       console.error("Invalid charge amount calculation")
@@ -524,7 +506,7 @@ const safelyAddChargeToFolio = async (folioId, chargeData, userId = null, transa
         posted_by: userId,
         is_taxable: chargeData.is_taxable || false,
         tax_rate: taxRate,
-        discount: chargeData.discount,
+        discount,
         notes: chargeData.notes,
         payment_status: chargeData.payment_status,
         room_id: chargeData?.room_id,
@@ -543,8 +525,6 @@ const safelyAddChargeToFolio = async (folioId, chargeData, userId = null, transa
     return null
   }
 }
-
-
 
 const getFolioByReservation = async (reservationId) => {
   const folio = await Folio.findOne({
@@ -725,6 +705,125 @@ const getGuestPaymentHistory = async (guestId, options = {}) => {
   };
 };
 
+const generateInvoiceFromRestaurantFolio = async (folioId,userId) => {
+  const transaction = await sequelize.transaction()
+
+  try {
+    const folio = await RestaurantFolio.findByPk(folioId, {
+      include: [
+        { model: RestaurantFolioCharge, as: "charges" },
+        { model: RestaurantOrder, as: "reservation" },
+        // { model: Guests, as: "guest" },
+      ],
+      transaction,
+    })
+
+    if (!folio) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Folio not found")
+    }
+
+    // Check if invoice already exists
+    const existingInvoice = await RestaurantInvoice.findOne({
+      where: { order_id: folio.order_id },
+      transaction,
+    })
+
+    if (existingInvoice) {
+      // throw new ApiError(httpStatus.BAD_REQUEST, "Invoice already exists for this reservation")
+    }
+
+    const invoiceNumber = await generateInvoiceNumber()
+
+    // Calculate invoice totals
+    let subtotal = 0
+    // let totalTaxAmount = 0
+    const taxBreakdown = {}
+
+    folio.charges.forEach((charge) => {
+      const chargeAmount = Number.parseFloat(charge.amount || 0)
+      const taxAmount = 0
+
+      subtotal += chargeAmount
+
+      // Group taxes by rate for breakdown
+      // if (charge.is_taxable && charge.tax_rate > 0) {
+      //   const rate = charge.tax_rate
+      //   if (!taxBreakdown[rate]) {
+      //     taxBreakdown[rate] = { taxableAmount: 0, taxAmount: 0 }
+      //   }
+      //   taxBreakdown[rate].taxableAmount += chargeAmount
+      //   taxBreakdown[rate].taxAmount += taxAmount
+      // }
+      // totalTaxAmount += taxAmount
+
+    })
+
+    const totalTaxAmount = parseFloat(parseFloat(subtotal * GST_RATES.STANDARD / 100).toFixed(2))
+    const totalAmount = subtotal + totalTaxAmount
+
+
+    // Create invoice
+    const invoice = await RestaurantInvoice.create(
+      {
+        invoice_number: invoiceNumber,
+        subtotal: subtotal,
+        tax_amount: totalTaxAmount,
+        total_amount: totalAmount,
+        balance_amount: totalAmount || 0,
+        paid_amount: 0,
+        due_date: moment().add(7, "days").toDate(),
+        status: "unpaid",
+        tax_breakdown: taxBreakdown,
+        generated_by: userId,
+        issued_at: new Date(),
+      },
+      { transaction },
+    )
+
+    // Create invoice items from folio charges
+    for (const charge of folio.charges) {
+
+      const tax_amount = parseFloat(parseFloat(charge.amount * GST_RATES.STANDARD / 100).toFixed(2))
+
+      await RestaurantInvoiceItem.create(
+        {
+          invoice_id: invoice.id,
+          item_type: charge.charge_type,
+          description: charge.description,
+          quantity: charge.quantity,
+          unit_price: charge.unit_price,
+          total_price: charge.total_amount + tax_amount,
+          amount: charge.amount,
+          tax_rate: charge.tax_rate,
+          tax_amount: tax_amount,
+          date_charged: charge.charge_date,
+          is_taxable: charge.is_taxable,
+          // total_price: charge.total_price || charge.total_amount || 0,
+        },
+        { transaction },
+      )
+    }
+
+    // Close folio
+    // await Folio.update(
+    //   {
+    //     status: "closed",
+    //     closed_date: new Date(),
+    //     invoice_id: invoice.id,
+    //   },
+    //   {
+    //     where: { id: folioId },
+    //     transaction,
+    //   },
+    // )
+
+    await transaction.commit()
+    return invoice
+  } catch (error) {
+    await transaction.rollback()
+    throw error
+  }
+}
 
 module.exports = {
   createFolio,
@@ -741,4 +840,5 @@ module.exports = {
   safelyGenerateRoomCharges,
   safelyCreateFolio,
   GST_RATES,
+  generateInvoiceFromRestaurantFolio,
 }

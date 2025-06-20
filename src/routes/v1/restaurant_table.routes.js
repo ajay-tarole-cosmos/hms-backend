@@ -1,6 +1,50 @@
 const express = require('express');
 const router = express.Router();
 const tableController = require('../../controllers/restaurant_table.controller');
+const { authenticateUser } = require('../../middlewares/authMiddleware');
+const checkStaffPermission = require('../../middlewares/checkResourcePermission');
+
+// Get all tables
+router.post(
+  '/tables/all',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  tableController.getAllTables
+);
+
+// Get table by ID
+router.post(
+  '/table/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  tableController.getTableById
+);
+
+// Create table
+router.post(
+  '/tables',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'add'),
+  tableController.createTable
+);
+
+// Update table
+router.put(
+  '/tables/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'update'),
+  tableController.updateTable
+);
+
+// Delete table
+router.delete(
+  '/tables/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'delete'),
+  tableController.deleteTable
+);
+
+module.exports = router;
 
 /**
  * @swagger
@@ -53,8 +97,6 @@ const tableController = require('../../controllers/restaurant_table.controller')
  *                   created_at: "2024-06-01T12:00:00Z"
  *                   updated_at: "2024-06-01T12:00:00Z"
  */
-router.post('/tables/all', tableController.getAllTables);
-router.post('/table/:id', tableController.getTableById);
 
 /**
  * @swagger
@@ -83,7 +125,6 @@ router.post('/table/:id', tableController.getTableById);
  *               capacity: 6
  *               location: "Center"
  */
-router.post('/tables', tableController.createTable);
 
 /**
  * @swagger
@@ -119,7 +160,6 @@ router.post('/tables', tableController.createTable);
  *               capacity: 4
  *               location: "Window"
  */
-router.put('/tables/:id', tableController.updateTable);
 
 /**
  * @swagger
@@ -142,6 +182,3 @@ router.put('/tables/:id', tableController.updateTable);
  *             example:
  *               message: "Table deleted"
  */
-router.delete('/tables/:id', tableController.deleteTable);
-
-module.exports = router; 

@@ -1,26 +1,90 @@
 const express = require("express")
 const { billingController } = require("../../controllers")
+const checkStaffPermission = require("../../middlewares/checkResourcePermission")
+const { authenticateUser } = require("../../middlewares/authMiddleware")
 const router = express.Router()
 
 // Folio routes
-router.post("/folio/reservation/:reservationId", billingController.getFolioByReservation)
-router.post("/folio/:folioId", billingController.getFolioDetails)
-router.post("/folio/:folioId/charges", billingController.addChargeToFolio)
-router.post("/folio/:folioId/generate-invoice", billingController.generateInvoiceFromFolio)
+router.post(
+    "/folio/reservation/:reservationId",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.getFolioByReservation
+  );
+  
+  router.post(
+    "/folio/:folioId",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.getFolioDetails
+  );
+  
+  router.post(
+    "/folio/:folioId/charges",
+    authenticateUser,
+    checkStaffPermission('reservation', 'add'),
+    billingController.addChargeToFolio
+  );
+  
+  router.post(
+    "/folio/:folioId/generate-invoice",
+    authenticateUser,
+    checkStaffPermission('reservation', 'add'),
+    billingController.generateInvoiceFromFolio
+  );
 
 // Invoice routes
-router.post("/invoices/:invoiceId", billingController.getInvoiceDetails)
-router.post("/invoices/:invoiceId/pdf", billingController.downloadInvoicePDF)
-router.post("/invoices/:invoiceId/email", billingController.emailInvoice)
+router.post(
+    "/invoices/:invoiceId",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.getInvoiceDetails
+  );
+  
+  router.post(
+    "/invoices/:invoiceId/pdf",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.downloadInvoicePDF
+  );
+  
+  router.post(
+    "/invoices/:invoiceId/email",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.emailInvoice
+  );
 
+  
 // Payment routes
-router.post("/payments", billingController.recordPayment)
-router.post("/payments/guest/:guestId", billingController.getGuestPaymentHistory)//get api
-router.post("/payments/:paymentId/receipt", billingController.downloadReceiptPDF)
-
-// Checkout process
-router.post("/checkout/:reservationId", billingController.processCheckout)
-
+router.post(
+    "/payments",
+    authenticateUser,
+    checkStaffPermission('reservation', 'add'),
+    billingController.recordPayment
+  );
+  
+  router.post(
+    "/payments/guest/:guestId",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.getGuestPaymentHistory
+  );
+  
+  router.post(
+    "/payments/:paymentId/receipt",
+    authenticateUser,
+    checkStaffPermission('reservation', 'view'),
+    billingController.downloadReceiptPDF
+  );
+  
+router.post(
+    "/checkout/:reservationId",
+    authenticateUser,
+    checkStaffPermission('reservation', 'update'),
+    billingController.processCheckout
+  );
+  
 module.exports = router
 
 

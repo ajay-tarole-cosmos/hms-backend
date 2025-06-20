@@ -1,6 +1,52 @@
 const express = require('express');
 const router = express.Router();
 const variantController = require('../../controllers/variant.controller');
+const { authenticateUser } = require('../../middlewares/authMiddleware');
+const checkStaffPermission = require('../../middlewares/checkResourcePermission');
+
+router.post(
+  '/create',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'add'),
+  variantController.createVariant
+);
+
+router.post(
+  '/all',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  variantController.getAllVariants
+);
+
+router.post(
+  '/by-sub/:subcategory_id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  variantController.getVariantsBySubcategoryId
+);
+
+router.get(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'view'),
+  variantController.getVariantById
+);
+
+router.put(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'update'),
+  variantController.updateVariant
+);
+
+router.delete(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('restaurant', 'delete'),
+  variantController.deleteVariant
+);
+
+module.exports = router;
 
 /**
  * @swagger
@@ -21,10 +67,8 @@ const variantController = require('../../controllers/variant.controller');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [subcategory_id, name, price, quantity]
+ *             required: [subcategory_id, name, price]
  *             properties:
- *               category_id:
- *                 type: string
  *               subcategory_id:
  *                 type: string
  *               name:
@@ -35,33 +79,29 @@ const variantController = require('../../controllers/variant.controller');
  *                 type: string
  *               size:
  *                 type: string
- *               quantity:
- *                 type: integer
  *     responses:
  *       201:
  *         description: Variant created successfully
  *       400:
  *         description: Bad request
  */
-router.post('/create', variantController.createVariant);
 
 /**
  * @swagger
  * /variant/all:
  *   post:
- *     summary: Get all variants
+ *     summary: Get all variants (with optional filters)
  *     tags: [Variants]
  *     responses:
  *       200:
  *         description: List of variants
  */
-router.post('/all', variantController.getAllVariants);
 
 /**
  * @swagger
  * /variant/by-sub/{subcategory_id}:
  *   post:
- *     summary: Get all variants
+ *     summary: Get all variants by subcategory
  *     tags: [Variants]
  *     parameters:
  *       - in: path
@@ -69,12 +109,13 @@ router.post('/all', variantController.getAllVariants);
  *         required: true
  *         schema:
  *           type: string
- *         description: Variant ID
+ *         description: Subcategory ID
  *     responses:
  *       200:
  *         description: List of variants
+ *       404:
+ *         description: No variants found
  */
-router.post('/by-sub/:subcategory_id', variantController.getVariantsBySubcategoryId);
 
 /**
  * @swagger
@@ -95,7 +136,6 @@ router.post('/by-sub/:subcategory_id', variantController.getVariantsBySubcategor
  *       404:
  *         description: Variant not found
  */
-router.post('/:id', variantController.getVariantById);
 
 /**
  * @swagger
@@ -117,6 +157,8 @@ router.post('/:id', variantController.getVariantById);
  *           schema:
  *             type: object
  *             properties:
+ *               subcategory_id:
+ *                 type: string
  *               name:
  *                 type: string
  *               price:
@@ -125,19 +167,12 @@ router.post('/:id', variantController.getVariantById);
  *                 type: string
  *               size:
  *                 type: string
- *               quantity:
- *                 type: integer
- *               category_id:
- *                 type: string
- *               subcategory_id:
- *                 type: string
  *     responses:
  *       200:
  *         description: Variant updated successfully
  *       404:
  *         description: Variant not found
  */
-router.put('/:id', variantController.updateVariant);
 
 /**
  * @swagger
@@ -154,10 +189,8 @@ router.put('/:id', variantController.updateVariant);
  *         description: Variant ID
  *     responses:
  *       200:
- *         description: Variant deleted
+ *         description: Variant deleted successfully
  *       404:
  *         description: Variant not found
  */
-router.delete('/:id', variantController.deleteVariant);
 
-module.exports = router;

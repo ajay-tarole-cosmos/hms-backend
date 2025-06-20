@@ -8,3 +8,7 @@ module.exports.pdfService= require('./pdf.service');
 module.exports.emailService= require('./email.service');
 module.exports.restaurantTableService= require('./restaurantTable.service')
 module.exports.TableBookingService= require('./tableBooking.service');
+module.exports.ReportService = require('./report.service');
+module.exports.procurementRequestService = require('./procurementRequest.service');
+module.exports.procurementService = require('./procurement.service');
+module.exports.inventoryConsumptionService = require('./inventoryConsumption.service');

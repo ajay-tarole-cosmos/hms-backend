@@ -3,64 +3,205 @@ const validate = require("../../middlewares/validate");
 const { RoomValidation } = require("../../validations");
 const { roomController } = require("../../controllers");
 const upload = require("../../middlewares/upload");
+const { authenticateUser } = require("../../middlewares/authMiddleware");
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
 
 const router = express.Router();
 
-router.post('/create-room-type',
+// Room Type
+router.post(
+  '/create-room-type',
+  authenticateUser,
+  checkStaffPermission('rooms', 'add'),
   validate(RoomValidation.createRoomSchema),
-  upload.fields([{ name: "image", maxCount: 1 }]), roomController.createRoom);
+  upload.fields([{ name: "image", maxCount: 1 }]),
+  roomController.createRoom
+);
 
-router.post('/room-types', roomController.getAllRoomType)
-router.post('/create-room-number',
-  validate(RoomValidation.createRoomNumberSchema),
-   roomController.createRoomNumberWithType);
-
-router.post('/get-room-list', roomController.getAllRoomList)
-router.post('/room-types-with-offer', roomController.getAllRoomTypewithOffers)
-router.post('/all-room-types', roomController.getAllRoomBasedTypes)
-router.post('/all-room-status', roomController.getAllRoomStatus)
-router.post('/all-room-number', roomController.getAllRoomNumber)
+router.post(
+  '/room-types',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getAllRoomType
+);
 
 router.patch(
   '/update-room-type/:room_id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'update'),
   validate(RoomValidation.updateRoomValidation),
   upload.fields([{ name: "image", maxCount: 1 }]),
   roomController.updateRoom
 );
 
+router.delete(
+  '/delete-room-type/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'delete'),
+  roomController.deleteRoomTypeById
+);
+
+// Room Number
+router.post(
+  '/create-room-number',
+  authenticateUser,
+  checkStaffPermission('rooms', 'add'),
+  validate(RoomValidation.createRoomNumberSchema),
+  roomController.createRoomNumberWithType
+);
+
+router.post(
+  '/all-room-number',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getAllRoomNumber
+);
+
 router.patch(
   '/update-room-number/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'update'),
   validate(RoomValidation.updateRoomNumberValidation),
   roomController.updateRoomNumberById
 );
 
-router.patch('/update-room-status/:roomId',
-  validate(RoomValidation.updateRoomValidation),
-  roomController.updateRoomStatus);
+router.delete(
+  '/delete-room-number/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'delete'),
+  roomController.deleteRoomNumber
+);
 
-router.post('/room-status', roomController.getRoomStatus);
-
-router.delete('/delete-room-type/:id', roomController.deleteRoomTypeById);
-router.delete('/delete-room-number/:id', roomController.deleteRoomNumber);
-
-router.post('/room-detail/:id', roomController.getRoomDetails);
+// Room Details, Status, List
+router.post(
+  '/room-detail/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getRoomDetails
+);
 router.post('/rooms', roomController.allRooms)
-router.post('/room-availability',roomController.getRoomAvailability)
 
+router.post(
+  '/get-room-list',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getAllRoomList
+);
 
-router.post("/offer/",validate(RoomValidation.createOfferValidation), roomController.createOffer);
-router.post("/offer/all", roomController.getOffers);
-router.post("/offer/:id", roomController.getOfferById);
-router.put("/offer/:id",validate(RoomValidation.updateOfferValidation), roomController.updateOffer);
-router.delete("/offer/:id", roomController.deleteOffer);
+router.post(
+  '/all-room-types',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getAllRoomBasedTypes
+);
 
-router.post("/package/", validate(RoomValidation.createPackageValidation), roomController.createPackage);
-router.post("/package/all/", roomController.getPackages);
-router.post("/package/:id", roomController.getPackageById);
-router.put("/package/:id",validate(RoomValidation.updatePackageValidation), roomController.updatePackage);
-router.delete("/package/:id", roomController.deletePackage);
+router.post(
+  '/all-room-status',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getAllRoomStatus
+);
 
-module.exports = router
+router.post(
+  '/room-status',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getRoomStatus
+);
+
+router.patch(
+  '/update-room-status/:roomId',
+  authenticateUser,
+  checkStaffPermission('rooms', 'update'),
+  validate(RoomValidation.updateRoomValidation),
+  roomController.updateRoomStatus
+);
+
+// Room Availability
+router.post(
+  '/room-availability',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getRoomAvailability
+);
+
+// Offers
+router.post(
+  '/offer',
+  authenticateUser,
+  checkStaffPermission('rooms', 'add'),
+  validate(RoomValidation.createOfferValidation),
+  roomController.createOffer
+);
+
+router.post(
+  '/offer/all',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getOffers
+);
+
+router.post(
+  '/offer/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getOfferById
+);
+
+router.put(
+  '/offer/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'update'),
+  validate(RoomValidation.updateOfferValidation),
+  roomController.updateOffer
+);
+
+router.delete(
+  '/offer/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'delete'),
+  roomController.deleteOffer
+);
+
+// Packages
+router.post(
+  '/package',
+  authenticateUser,
+  checkStaffPermission('rooms', 'add'),
+  validate(RoomValidation.createPackageValidation),
+  roomController.createPackage
+);
+
+router.post(
+  '/package/all',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getPackages
+);
+
+router.post(
+  '/package/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'view'),
+  roomController.getPackageById
+);
+
+router.put(
+  '/package/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'update'),
+  validate(RoomValidation.updatePackageValidation),
+  roomController.updatePackage
+);
+
+router.delete(
+  '/package/:id',
+  authenticateUser,
+  checkStaffPermission('rooms', 'delete'),
+  roomController.deletePackage
+);
+
+module.exports = router;
 
 /**
  * @swagger

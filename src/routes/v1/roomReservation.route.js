@@ -2,45 +2,106 @@ const express = require("express");
 const validate = require("../../middlewares/validate");
 const { roomReservationController } = require("../../controllers");
 const upload = require("../../middlewares/upload");
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
+const { authenticateUser, authorizeRoles } = require("../../middlewares/authMiddleware");
 
 const router = express.Router();
 
+router.use(authenticateUser); 
+
 router.post(
   '/all',
+  checkStaffPermission('reservation', 'view'),
   roomReservationController.getallGuestReservation
 );
 
 router.put(
   '/reassign-room/:reservation_id',
+  checkStaffPermission('reservation', 'update'),
   roomReservationController.changeOrReassignRoom
-)
-router.post('/export-reservations', roomReservationController.exportReservations);
+);
+
+router.post(
+  '/export-reservations',
+  checkStaffPermission('reservation', 'view'),
+  roomReservationController.exportReservations
+);
 
 router.post(
   '/quick-room-booking/',
+  checkStaffPermission('reservation', 'add'),
   roomReservationController.quickRoomBooking
-)
+);
 
 router.post(
   '/:reservation_id/logs',
+  authorizeRoles('admin', 'super_admin'), 
+  checkStaffPermission('reservation', 'view'),
   roomReservationController.getReservationLogs
 );
 
 router.post(
   '/get-booking-details/:reservation_id',
+  checkStaffPermission('reservation', 'view'),
   roomReservationController.getGuestReservation
-)
+);
 
-router.post('/create-room-booking', upload.array("guestDocuments", 10), roomReservationController.createReservation)
-router.post('/calculate-prices', roomReservationController.calculatedPrices)
-router.patch('/update-reservation/:reservation_id', upload.array("guestDocuments", 10), roomReservationController.updateReservation)
-router.post('/all-room-availability', roomReservationController.getAllRoomAvailability)
-router.get('/reservations', roomReservationController.getReservations);
+router.post(
+  '/create-room-booking',
+  checkStaffPermission('reservation', 'add'),
+  upload.array("guestDocuments", 10),
+  roomReservationController.createReservation
+);
 
-router.patch('/update-reservation-details/:reservation_id', roomReservationController.updateReservationRoomById)
-router.post('/reservation-list', roomReservationController.getAllReservationDetailList)
+router.post(
+  '/calculate-prices',
+  checkStaffPermission('reservation', 'view'),
+  roomReservationController.calculatedPrices
+);
 
-router.post( "/record-payment",roomReservationController.createPayment);
+router.patch(
+  '/update-reservation/:reservation_id',
+  checkStaffPermission('reservation', 'update'),
+  upload.array("guestDocuments", 10),
+  roomReservationController.updateReservation
+);
+
+router.post(
+  '/all-room-availability',
+  checkStaffPermission('reservation', 'view'),
+  roomReservationController.getAllRoomAvailability
+);
+
+router.get(
+  '/reservations',
+  checkStaffPermission('reservation', 'view'),
+  roomReservationController.getReservations
+);
+
+router.patch(
+  '/update-reservation-details/:reservation_id',
+  checkStaffPermission('reservation', 'update'),
+  roomReservationController.updateReservationRoomById
+);
+
+router.post(
+  '/reservation-list',
+  checkStaffPermission('reservation', 'view'),
+
+  roomReservationController.getAllReservationDetailList
+);
+
+router.post(
+  '/checkout/:reservationId',
+  checkStaffPermission('reservation', 'update'),
+  roomReservationController.CheckoutBookinng
+);
+
+router.post(
+  "/record-payment",
+  checkStaffPermission('reservation', 'add'),
+  roomReservationController.createPayment
+);
 module.exports = router
 
 // /**
@@ -281,7 +342,7 @@ module.exports = router
  *                         properties:
  *                           id:
  *                             type: string
- *                             example: "215cd88a-b951-44ac-a865-c51d497c28b4"
+ *                             example: "db1167fb-de69-4f0e-a257-0812311f4fab"
  *                           first_name:
  *                             type: string
  *                             example: "John"

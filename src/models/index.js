@@ -32,9 +32,20 @@ db.RestaurantTable = require('./restaurant_table.model.js')
 db.RestaurantUser = require('./restaurants_users.model.js')
 db.Department = require('./departments.model.js')
 db.DepartmentCategory = require('./department_category.model.js')
-db.InventoryItem = require('./department_inventoryitem.model.js')
-db.Procurement = require('./procurement.model.js')
-db.ProcurementItem = require('./procurementItem.model.js')
+db.InventoryItem = require('./department_inventoryitem.model.js');
+db.Procurement = require('./procurement.model.js');
+db.ProcurementItem = require('./procurementItem.model.js');
+db.RestaurantFolio = require('./restaurant_folio.js');
+db.RestaurantFolioCharge= require('./restaurant_folio_charges.js');
+db.RestaurantInvoice = require('./restaurant_invoice.js');
+db.RestaurantInvoiceItem = require('./restaurant_Invoice_Item.js');
+db.RestaurantPayment = require('./restaurant_payment.model.js');
+db.Settings = require('./settings.model.js');
+db.ProcurementRequest = require('./procurementRequest.model.js');
+db.ProcurementRequestItem = require('./procurementRequestItem.model.js');
+db.InventoryConsumptionHistory = require('./inventoryConsumptionHistory.model.js');
+db.StaffPermission = require('./staffPermission.model.js');
+
 //  Call associate AFTER all models are attached to db
 Object.values(db).forEach((model) => {
   if (model.associate) {
@@ -46,10 +57,3 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 module.exports  = db;
-
-// if (db.RestaurantOrder && db.RestaurantOrderItem && db.Variant) {
-//   db.RestaurantOrder.hasMany(db.RestaurantOrderItem, { foreignKey: 'order_id', as: 'items' });
-//   db.RestaurantOrderItem.belongsTo(db.RestaurantOrder, { foreignKey: 'order_id', as: 'order' });
-//   db.RestaurantOrderItem.belongsTo(db.Variant, { foreignKey: 'variant_id', as: 'variant' });
-// }
-// db.Vari

@@ -14,9 +14,15 @@ exports.getAll = catchAsync(async (req, res) => {
 });
 
 exports.getOne = catchAsync(async (req, res) => {
-  const data = await service.findById(req.params.id);
+  const data = await service.findById(req.params.id, req.user);
+
+  if (!data) {
+    return res.status(403).json({ message: 'Access denied or department not found' });
+  }
+
   sendResponse(res, { statusCode: 200, message: 'Success', data });
 });
+
 
 exports.update = catchAsync(async (req, res) => {
   const data = await service.update(req.params.id, req.body);

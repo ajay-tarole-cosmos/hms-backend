@@ -3,11 +3,16 @@ const { RestaurantTable, TableBooking } = require("../models");
 const paginate = require("../models/plugins/paginate.plugin");
 
 const getAllTables = async (req) => {
-  const { page, limit, sortBy = [["created_at", "desc"]], datetime } = req.query;
+  const {
+    page,
+    limit,
+    sortBy = [["created_at", "desc"]],
+    datetime,
+  } = req.query;
   let baseTime = new Date();
 
   if (datetime && datetime !== "undefined") {
-    baseTime = new Date(datetime)
+    baseTime = new Date(datetime);
   }
 
   const { data: tables, pagination } = await paginate(
@@ -17,58 +22,58 @@ const getAllTables = async (req) => {
   );
 
   const twoHoursAgo = new Date(baseTime.getTime() - 2 * 60 * 60 * 1000);
+  const twoHoursLater = new Date(baseTime.getTime() + 2 * 60 * 59 * 1000);
 
-
-  //   if (datetime) {
-  //     let status = recentBooking ? "booked" : "available";
-  //     updatedTables.push({
-  //       ...table.toJSON(), // convert Sequelize model to plain object
-  //       status: status,
-  //     })
-  //   } else {
-  //     if (!recentBooking) {
-  //       if (table.status === "occupied") {
-  //         table.status = "available";
-  //         await table.save();
-  //         updatedTables.push(table)
-  //       }
-  //     }
-  //   }
-  // }
   let updatedTables = [];
 
-for (const table of tables) {
-  const recentBooking = await TableBooking.findOne({
-    where: {
-      table_id: table.id,
-      status: "booked",
-      booking_time: { [Op.gt]: twoHoursAgo },
-    },
-  });
+  for (const table of tables) {
+    let recentBooking;
+    if (datetime) {
+      recentBooking = await TableBooking.findOne({
+        where: {
+          table_id: table.id,
+          status: "booked",
+          booking_time: {
+            [Op.between]: [baseTime, twoHoursLater],
+          },
+        },
+      });
+    console.log("checking1", recentBooking, baseTime, twoHoursLater);
 
-  let newStatus;
-
-  if (datetime) {
-    // If datetime query param is provided, status depends on booking presence
-    newStatus = recentBooking ? "booked" : "available";
-  } else {
-    // If no datetime, update table status only if currently "occupied" and no recent booking
-    if (!recentBooking && table.status === "occupied") {
-      table.status = "available";
-      await table.save();
-      newStatus = "available";
     } else {
-      newStatus = table.status;
+      console.log("no datetime");
+      recentBooking = await TableBooking.findOne({
+        where: {
+          table_id: table.id,
+          status: "booked",
+          booking_time: { [Op.gt]: twoHoursAgo },
+        },
+      });
     }
+    console.log("recentBooking", recentBooking, twoHoursAgo);
+    let newStatus;
+
+    if (datetime) {
+      // If datetime query param is provided, status depends on booking presence
+      newStatus = recentBooking ? "booked" : "available";
+    } else {
+      // If no datetime, update table status only if currently "occupied" and no recent booking
+      if (!recentBooking && table.status === "occupied") {
+        table.status = "available";
+        await table.save();
+        newStatus = "available";
+      } else {
+        newStatus = table.status;
+      }
+    }
+
+    updatedTables.push({
+      ...table.toJSON(),
+      status: newStatus,
+    });
   }
 
-  updatedTables.push({
-    ...table.toJSON(),
-    status: newStatus,
-  });
-}
-
-  console.log("updatedTables,",updatedTables)
+  console.log("updatedTables,", updatedTables);
 
   return { data: updatedTables, pagination };
 };
@@ -80,7 +85,6 @@ const getTableById = async (id) => {
   }
   return table;
 };
-
 
 const createTable = async (tableData) => {
   return RestaurantTable.create(tableData);

@@ -1,211 +1,5 @@
-// const httpStatus = require("http-status")
-// const catchAsync = require("../utils/catchAsync")
-// const { pdfService, emailService, billingService } = require("../services")
-// const path = require("path")
-// const fs = require("fs")
-// const { Payments,Guests,Invoice} = require("../models")
-
-// const getFolioByReservation = catchAsync(async (req, res) => {
-//   const { reservationId } = req.params
-//   const folio = await billingService.getFolioByReservation(reservationId)
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     data: folio,
-//   })
-// })
-
-// const getFolioDetails = catchAsync(async (req, res) => {
-//   const { folioId } = req.params
-//   const folio = await billingService.getFolioDetails(folioId)
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     data: folio,
-//   })
-// })
-
-// const addChargeToFolio = catchAsync(async (req, res) => {
-//   const { folioId } = req.params
-//   const charge = await billingService.addChargeToFolio(folioId, req.body, req.user.id='215cd88a-b951-44ac-a865-c51d497c28b4')
-
-//   res.status(httpStatus.CREATED).json({
-//     success: true,
-//     message: "Charge added successfully",
-//     data: charge,
-//   })
-// })
-
-// const generateInvoiceFromFolio = catchAsync(async (req, res) => {
-//   const { folioId } = req.params
-//   const invoice = await billingService.generateInvoiceFromFolio(folioId, req.user?.id)
-
-//   res.status(httpStatus.CREATED).json({
-//     success: true,
-//     message: "Invoice generated successfully",
-//     data: invoice,
-//   })
-// })
-
-// const getInvoiceDetails = catchAsync(async (req, res) => {
-//   const { invoiceId } = req.params
-//   const invoice = await billingService.getInvoiceDetails(invoiceId)
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     data: invoice,
-//   })
-// })
-
-// const downloadInvoicePDF = catchAsync(async (req, res) => {
-//   const { invoiceId } = req.params
-//   const invoice = await billingService.getInvoiceDetails(invoiceId)
-
-//   const fileName = `invoice-${invoice.invoice_number}.pdf`
-//   const filePath = path.join(__dirname, "../temp", fileName)
-
-//   // Ensure temp directory exists
-//   const tempDir = path.dirname(filePath)
-//   if (!fs.existsSync(tempDir)) {
-//     fs.mkdirSync(tempDir, { recursive: true })
-//   }
-
-//   await pdfService.generateInvoicePDF(invoice, filePath)
-
-//   res.download(filePath, fileName, (err) => {
-//     if (err) {
-//       console.error("Error downloading file:", err)
-//     }
-//     // Clean up temp file
-//     fs.unlink(filePath, (unlinkErr) => {
-//       if (unlinkErr) console.error("Error deleting temp file:", unlinkErr)
-//     })
-//   })
-// })
-
-// const emailInvoice = catchAsync(async (req, res) => {
-//   const { invoiceId } = req.params
-//   const invoice = await billingService.getInvoiceDetails(invoiceId)
-
-//   const fileName = `invoice-${invoice.invoice_number}.pdf`
-//   const filePath = path.join(__dirname, "../temp", fileName)
-
-//   // Ensure temp directory exists
-//   const tempDir = path.dirname(filePath)
-//   if (!fs.existsSync(tempDir)) {
-//     fs.mkdirSync(tempDir, { recursive: true })
-//   }
-
-//   await pdfService.generateInvoicePDF(invoice, filePath)
-//   await emailService.sendInvoiceEmail(invoice, filePath)
-
-//   // Update invoice email status
-//   await Invoice.update({ email_sent: true, email_sent_at: new Date() }, { where: { id: invoiceId } })
-
-//   // Clean up temp file
-//   fs.unlink(filePath, (err) => {
-//     if (err) console.error("Error deleting temp file:", err)
-//   })
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     message: "Invoice sent successfully",
-//   })
-// })
-
-// const recordPayment = catchAsync(async (req, res) => {
-//   const payment = await billingService.processPayment(req.body, req.user?.id)
-
-//   res.status(httpStatus.CREATED).json({
-//     success: true,
-//     message: "Payment recorded successfully",
-//     data: payment,
-//   })
-// })
-
-// const getGuestPaymentHistory = catchAsync(async (req, res) => {
-//   const { guestId } = req.params
-//   const { page, limit } = req.query
-
-//   const paymentHistory = await billingService.getGuestPaymentHistory(guestId, { page, limit })
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     data: paymentHistory,
-//   })
-// })
-
-// const downloadReceiptPDF = catchAsync(async (req, res) => {
-//   const { paymentId } = req.params
-//   const payment = await Payments.findByPk(paymentId, {
-//     include: [{ model: Invoice, as: "invoice", include: [{ model: Guests, as: "guest" }] }],
-//   })
-
-//   if (!payment) {
-//     return res.status(httpStatus.NOT_FOUND).json({
-//       success: false,
-//       message: "Payment not found",
-//     })
-//   }
-
-//   const fileName = `receipt-${payment.reference_number || payment.id}.pdf`
-//   const filePath = path.join(__dirname, "../temp", fileName)
-
-//   // Ensure temp directory exists
-//   const tempDir = path.dirname(filePath)
-//   if (!fs.existsSync(tempDir)) {
-//     fs.mkdirSync(tempDir, { recursive: true })
-//   }
-
-//   await pdfService.generateReceiptPDF(payment, filePath)
-
-//   res.download(filePath, fileName, (err) => {
-//     if (err) {
-//       console.error("Error downloading file:", err)
-//     }
-//     // Clean up temp file
-//     fs.unlink(filePath, (unlinkErr) => {
-//       if (unlinkErr) console.error("Error deleting temp file:", unlinkErr)
-//     })
-//   })
-// })
-
-// const processCheckout = catchAsync(async (req, res) => {
-//   const { reservationId } = req.params
-
-//   // Generate room charges if not already done
-//   await billingService.generateRoomCharges(reservationId)
-
-//   // Get folio
-//   const folio = await billingService.getFolioByReservation(reservationId)
-
-//   // Generate invoice
-//   const invoice = await billingService.generateInvoiceFromFolio(folio.id, req.user?.id)
-
-//   res.status(httpStatus.OK).json({
-//     success: true,
-//     message: "Checkout processed successfully",
-//     data: { invoice, folio },
-//   })
-// })
-
-// module.exports = {
-//   getFolioByReservation,
-//   getFolioDetails,
-//   addChargeToFolio,
-//   generateInvoiceFromFolio,
-//   getInvoiceDetails,
-//   downloadInvoicePDF,
-//   emailInvoice,
-//   recordPayment,
-//   getGuestPaymentHistory,
-//   downloadReceiptPDF,
-//   processCheckout,
-// }
-
 const httpStatus = require("http-status")
 const catchAsync = require("../utils/catchAsync")
-// const { pdfService, emailService, billingService } = require("../services")
 const path = require("path")
 const fs = require("fs")
 const { Payments, Guests, Invoice } = require("../models")
@@ -252,7 +46,7 @@ const addChargeToFolio = catchAsync(async (req, res) => {
   const charge = await billingService.addChargeToFolio(
     folioId,
     chargeData,
-    req.user?.id || "215cd88a-b951-44ac-a865-c51d497c28b4",
+    req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
   )
 
   res.status(httpStatus.CREATED).json({
@@ -266,7 +60,7 @@ const generateInvoiceFromFolio = catchAsync(async (req, res) => {
   const { folioId } = req.params
   const invoice = await billingService.generateInvoiceFromFolio(
     folioId,
-    req.user?.id || "215cd88a-b951-44ac-a865-c51d497c28b4",
+    req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
   )
 
   res.status(httpStatus.CREATED).json({
@@ -378,7 +172,7 @@ const recordPayment = catchAsync(async (req, res) => {
 
   const payment = await billingService.processPayment(
     paymentData,
-    req.user?.id || "215cd88a-b951-44ac-a865-c51d497c28b4",
+    req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
   )
 
   res.status(httpStatus.CREATED).json({
@@ -447,7 +241,7 @@ const processCheckout = catchAsync(async (req, res) => {
     try {
       invoice = await billingService.generateInvoiceFromFolio(
         folio.id,
-        req.user?.id || "215cd88a-b951-44ac-a865-c51d497c28b4",
+        req.user?.id || "db1167fb-de69-4f0e-a257-0812311f4fab",
       )
     } catch (error) {
       if (error.message.includes("Invoice already exists")) {

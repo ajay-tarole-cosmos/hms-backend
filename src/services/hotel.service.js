@@ -66,12 +66,17 @@ const getAmenities = async () => {
 };
 
 const getAmenityById = async (id) => {
+  console.log("amneifdsjkf")
   return await Amenity.findByPk(id, { attributes: ['id', 'amenity_name'] });
 };
 
-const createAmenity = async (data) => {
-  return await Amenity.create({ amenity_name: data.amenity_name });
+const createAmenity = async ({ name }) => {
+  console.log("name jkdfdsfm",name)
+  if (!name) throw new Error("Amenity name is required");
+  const amenity = await Amenity.create({amenity_name: name }); // assuming `name` is a valid column
+  return amenity;
 };
+
 
 const updateAmenity = async (id, data) => {
   const amenity = await Amenity.findByPk(id);

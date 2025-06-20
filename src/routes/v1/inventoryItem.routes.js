@@ -1,7 +1,59 @@
-// routes/inventories.routes.js
-
 const router = require('express').Router();
 const ctrl = require('../../controllers/inventoryItem.controller');
+const { authenticateUser } = require('../../middlewares/authMiddleware');
+const checkStaffPermission = require('../../middlewares/checkResourcePermission');
+
+router.post(
+  '/create',
+  authenticateUser,
+  checkStaffPermission('departments', 'add'),
+  ctrl.create
+);
+
+router.post(
+  '/all',
+  authenticateUser,
+  checkStaffPermission('departments', 'view'),
+  ctrl.getAll
+);
+
+router.post(
+  '/by-category/:category_id',
+  authenticateUser,
+  checkStaffPermission('departments', 'view'),
+  ctrl.getInventoryByCategoryId
+);
+
+router.post(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('departments', 'view'),
+  ctrl.getOne
+);
+
+router.put(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('departments', 'update'),
+  ctrl.update
+);
+
+// New route for recording consumption
+router.post(
+  '/:id/consume',
+  authenticateUser,
+  checkStaffPermission('departments', 'update'),
+  ctrl.recordConsumption
+);
+
+router.delete(
+  '/:id',
+  authenticateUser,
+  checkStaffPermission('departments', 'delete'),
+  ctrl.delete
+);
+
+module.exports = router;
 
 /**
  * @swagger
@@ -44,7 +96,6 @@ const ctrl = require('../../controllers/inventoryItem.controller');
  *       400:
  *         description: Bad request
  */
-router.post('/create', ctrl.create);
 
 /**
  * @swagger
@@ -56,7 +107,6 @@ router.post('/create', ctrl.create);
  *       200:
  *         description: List of all inventory items
  */
-router.post('/all', ctrl.getAll);
 
 /**
  * @swagger
@@ -76,7 +126,6 @@ router.post('/all', ctrl.getAll);
  *       200:
  *         description: A list of subcategories
  */
-router.post('/by-category/:category_id', ctrl.getInventoryByCategoryId);
 
 /**
  * @swagger
@@ -98,7 +147,6 @@ router.post('/by-category/:category_id', ctrl.getInventoryByCategoryId);
  *       404:
  *         description: Item not found
  */
-router.post('/:id', ctrl.getOne);
 
 /**
  * @swagger
@@ -135,7 +183,6 @@ router.post('/:id', ctrl.getOne);
  *       404:
  *         description: Item not found
  */
-router.put('/:id', ctrl.update);
 
 /**
  * @swagger
@@ -157,6 +204,4 @@ router.put('/:id', ctrl.update);
  *       404:
  *         description: Item not found
  */
-router.delete('/:id', ctrl.remove);
 
-module.exports = router;

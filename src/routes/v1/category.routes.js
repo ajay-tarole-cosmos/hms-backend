@@ -1,8 +1,46 @@
 const express = require("express");
 const categoryController = require('../../controllers/category.controller');
+const checkStaffPermission = require("../../middlewares/checkResourcePermission");
+const { authenticateUser } = require("../../middlewares/authMiddleware");
 
 const router = express.Router();
 
+router.post(
+    '/create',
+    authenticateUser,
+    checkStaffPermission('restaurant', 'add'),
+    categoryController.createCategory
+  );
+  
+  router.post(
+    '/all',
+    authenticateUser,
+    checkStaffPermission('restaurant', 'view'),
+    categoryController.getAllCategories
+  );
+  
+  router.post(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('restaurant', 'view'),
+    categoryController.getCategoryById
+  );
+  
+  router.put(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('restaurant', 'update'),
+    categoryController.updateCategory
+  );
+  
+  router.delete(
+    '/:id',
+    authenticateUser,
+    checkStaffPermission('restaurant', 'delete'),
+    categoryController.deleteCategory
+  );  
+  
+module.exports = router;
 /**
  * @swagger
  * tags:
@@ -37,7 +75,6 @@ const router = express.Router();
  *       400:
  *         description: Invalid input
  */
-router.post('/create', categoryController.createCategory);
 
 /**
  * @swagger
@@ -49,7 +86,6 @@ router.post('/create', categoryController.createCategory);
  *       200:
  *         description: List of categories
  */
-router.post('/all', categoryController.getAllCategories);
 
 /**
  * @swagger
@@ -70,7 +106,6 @@ router.post('/all', categoryController.getAllCategories);
  *       404:
  *         description: Category not found
  */
-router.post('/:id', categoryController.getCategoryById);
 
 /**
  * @swagger
@@ -104,7 +139,6 @@ router.post('/:id', categoryController.getCategoryById);
  *       404:
  *         description: Category not found
  */
-router.put('/:id', categoryController.updateCategory);
 
 /**
  * @swagger
@@ -125,6 +159,4 @@ router.put('/:id', categoryController.updateCategory);
  *       404:
  *         description: Category not found
  */
-router.delete('/:id', categoryController.deleteCategory);
 
-module.exports = router;

@@ -5,7 +5,7 @@ const { GuestService } = require("../services");
 const { Reservation, Guests, Sequelize } = require("../models");
 const { Op } = require("sequelize");
 const { Staff } = require('../models');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 const createGuestUser = catchAsync(async (req, res) => {
   const  { createdGuest, createdGuestDetail } = await GuestService.createGuestUser(req)

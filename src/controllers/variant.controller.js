@@ -14,14 +14,18 @@ exports.createVariant = catchAsync(async (req, res) => {
 });
 
 exports.getAllVariants = catchAsync(async (req, res) => {
-  const variants = await VariantService.getAllVariants(req);
+  const { variants, pagination } = await VariantService.getAllVariants(req.query);
   return sendResponse(res, {
     statusCode: httpStatus.OK,
-    message: 'All variants retrieved',
+    message: 'All variants retrieved successfully',
     success: true,
-    data: variants,
+    data: {
+      variants,
+      pagination,
+    },
   });
 });
+
 
 exports.getVariantById = catchAsync(async (req, res) => {
   const variant = await VariantService.getVariantById(req.params.id);
@@ -34,13 +38,13 @@ exports.getVariantById = catchAsync(async (req, res) => {
 });
 
 exports.getVariantsBySubcategoryId = catchAsync(async (req, res) => {
-  const variants = await VariantService.getVariantsBySubcategoryId(req);
+  const { data: variants, pagination } = await VariantService.getVariantsBySubcategoryId(req);
 
   if (!variants || variants.length === 0) {
     return sendResponse(res, {
-      statusCode: httpStatus.NOT_FOUND,
+      statusCode: httpStatus.OK,
       success: false,
-      message: 'No variants found for the given category ID',
+      message: 'No variants found for the given subcategory ID',
     });
   }
 
@@ -48,9 +52,13 @@ exports.getVariantsBySubcategoryId = catchAsync(async (req, res) => {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Variants fetched successfully',
-    data: variants,
+    data: {
+      variants,
+      pagination,
+    },
   });
 });
+
 
 exports.updateVariant = catchAsync(async (req, res) => {
   const variant = await VariantService.updateVariant(req.params.id, req.body);

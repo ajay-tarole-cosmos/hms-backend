@@ -5,10 +5,16 @@ const SubcategoryService = require('../services/subcategory.service');
 
 // CREATE
 exports.createSubcategory = catchAsync(async (req, res) => {
-  const subcategory = await SubcategoryService.createSubcategory(req.body);
+  const imageUrl = req.file?.path || null;
+
+  const subcategory = await SubcategoryService.createSubcategory({
+    ...req.body,
+    image: imageUrl,
+  });
+
   return sendResponse(res, {
     statusCode: httpStatus.CREATED,
-    message: 'Subcategory created successfully',
+    message: "Subcategory created successfully",
     success: true,
     data: subcategory,
   });
@@ -49,7 +55,7 @@ exports.getSubcategoriesByCategoryId = catchAsync(async (req, res) => {
 
   if (!subcategories || subcategories.length === 0) {
     return sendResponse(res, {
-      statusCode: httpStatus.NOT_FOUND,
+      statusCode: httpStatus.OK,
       success: false,
       message: 'No subcategories found for the given category ID',
     });
@@ -65,7 +71,13 @@ exports.getSubcategoriesByCategoryId = catchAsync(async (req, res) => {
 
 // UPDATE
 exports.updateSubcategory = catchAsync(async (req, res) => {
-  const subcategory = await SubcategoryService.updateSubcategory(req.params.id, req.body);
+  const imageUrl = req.file?.path || null;
+
+  const subcategory = await SubcategoryService.updateSubcategory(req.params.id, {
+    ...req.body,
+    image: imageUrl,
+  });
+
   return sendResponse(res, {
     statusCode: httpStatus.OK,
     message: 'Subcategory updated successfully',

@@ -101,7 +101,6 @@ Invoice.associate = (models) => {
     Invoice.hasMany(models.InvoiceItem, { foreignKey: "invoice_id", as: "items" })
     Invoice.hasMany(models.Payments, { foreignKey: "invoice_id", as: "payments" })
     Invoice.belongsTo(models.Folio, { foreignKey: "folio_id", as: "folio" })
-
 };
 
 
