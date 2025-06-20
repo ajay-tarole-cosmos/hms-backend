@@ -20,7 +20,7 @@ const {
   RestaurantInvoice,
 } = require("../models")
 const moment = require("moment")
-const { generateInvoiceNumber, generateFolioNumber } = require("../utils/NumberGenerators")
+const { generateInvoiceNumber, generateFolioNumber } = require("../utils/numberGenerators")
 const RestaurantInvoiceItem = require("../models/restaurant_Invoice_Item")
 
 // GST Configuration
